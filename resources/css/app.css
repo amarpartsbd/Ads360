@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.{ts,tsx}';
+
+/*
+ * Semantic design tokens (spec §70).
+ *
+ * Components reference roles — surface, border, muted, danger — never raw
+ * colours, so a tenant's brand can be applied by overriding these variables
+ * alone (spec §43). The palette is a restrained enterprise neutral with a
+ * single accent; no gradients or decorative colour.
+ */
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+
+    --radius-card: 0.625rem;
+    --radius-control: 0.375rem;
+}
+
+@layer base {
+    :root {
+        --background: oklch(0.985 0.002 250);
+        --foreground: oklch(0.21 0.015 260);
+
+        --surface: oklch(1 0 0);
+        --surface-foreground: oklch(0.21 0.015 260);
+        --surface-muted: oklch(0.968 0.003 250);
+
+        --primary: oklch(0.47 0.14 258);
+        --primary-foreground: oklch(0.99 0 0);
+        --primary-hover: oklch(0.42 0.14 258);
+
+        --secondary: oklch(0.955 0.005 250);
+        --secondary-foreground: oklch(0.28 0.015 260);
+
+        --muted: oklch(0.955 0.005 250);
+        --muted-foreground: oklch(0.52 0.012 258);
+
+        --border: oklch(0.905 0.005 255);
+        --input: oklch(0.9 0.006 255);
+        --ring: oklch(0.47 0.14 258);
+
+        --success: oklch(0.58 0.13 155);
+        --success-foreground: oklch(0.99 0 0);
+        --success-subtle: oklch(0.955 0.03 155);
+
+        --warning: oklch(0.72 0.15 75);
+        --warning-foreground: oklch(0.24 0.04 75);
+        --warning-subtle: oklch(0.965 0.04 85);
+
+        --danger: oklch(0.55 0.2 25);
+        --danger-foreground: oklch(0.99 0 0);
+        --danger-subtle: oklch(0.96 0.03 25);
+
+        --info: oklch(0.6 0.12 240);
+        --info-foreground: oklch(0.99 0 0);
+        --info-subtle: oklch(0.96 0.03 240);
+    }
+
+    /*
+     * Dark mode is opt-in via a `dark` class on the root element, so it can be
+     * driven by a stored user preference rather than only by the OS.
+     */
+    .dark {
+        --background: oklch(0.17 0.012 260);
+        --foreground: oklch(0.95 0.004 250);
+
+        --surface: oklch(0.215 0.014 260);
+        --surface-foreground: oklch(0.95 0.004 250);
+        --surface-muted: oklch(0.255 0.014 260);
+
+        --primary: oklch(0.66 0.14 258);
+        --primary-foreground: oklch(0.16 0.02 260);
+        --primary-hover: oklch(0.72 0.14 258);
+
+        --secondary: oklch(0.27 0.014 260);
+        --secondary-foreground: oklch(0.93 0.004 250);
+
+        --muted: oklch(0.27 0.014 260);
+        --muted-foreground: oklch(0.68 0.012 255);
+
+        --border: oklch(0.31 0.014 260);
+        --input: oklch(0.33 0.014 260);
+        --ring: oklch(0.66 0.14 258);
+
+        --success: oklch(0.68 0.13 155);
+        --success-foreground: oklch(0.16 0.02 155);
+        --success-subtle: oklch(0.28 0.05 155);
+
+        --warning: oklch(0.78 0.14 78);
+        --warning-foreground: oklch(0.18 0.03 78);
+        --warning-subtle: oklch(0.3 0.05 78);
+
+        --danger: oklch(0.64 0.19 25);
+        --danger-foreground: oklch(0.16 0.02 25);
+        --danger-subtle: oklch(0.3 0.07 25);
+
+        --info: oklch(0.68 0.12 240);
+        --info-foreground: oklch(0.16 0.02 240);
+        --info-subtle: oklch(0.28 0.05 240);
+    }
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-surface: var(--surface);
+    --color-surface-foreground: var(--surface-foreground);
+    --color-surface-muted: var(--surface-muted);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-success-subtle: var(--success-subtle);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-subtle: var(--warning-subtle);
+    --color-danger: var(--danger);
+    --color-danger-foreground: var(--danger-foreground);
+    --color-danger-subtle: var(--danger-subtle);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+    --color-info-subtle: var(--info-subtle);
+}
+
+@layer base {
+    * {
+        border-color: var(--color-border);
+    }
+
+    /* A visible focus ring on every interactive element (spec §74). */
+    :focus-visible {
+        outline: 2px solid var(--color-ring);
+        outline-offset: 2px;
+    }
+}

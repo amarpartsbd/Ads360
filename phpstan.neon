@@ -1,0 +1,30 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+
+    # Level 6 requires the type information this codebase already declares, and
+    # is raised as the platform grows. Raising it is a deliberate change, not a
+    # background one.
+    level: 6
+
+    checkModelProperties: true
+    checkOctaneCompatibility: false
+
+    ignoreErrors:
+        # Eloquent models expose columns as dynamic properties. Larastan
+        # resolves most of them, but pivot access through a relation is beyond
+        # what static analysis can follow.
+        - identifier: property.notFound
+          path: app/Domains/Tenant/Models/*.php
+
+    excludePaths:
+        - vendor
+        - bootstrap/cache
+        - storage

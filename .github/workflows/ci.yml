@@ -1,0 +1,149 @@
+name: CI
+
+on:
+    push:
+        branches: ['**']
+    pull_request:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    PHP_VERSION: '8.4'
+    NODE_VERSION: '22'
+
+jobs:
+    static-analysis:
+        name: Static analysis and code style
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: pdo_pgsql, pgsql, redis, intl, zip, gd, bcmath
+                  coverage: none
+
+            - name: Install PHP dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Check code style
+              run: vendor/bin/pint --test
+
+            - name: Run static analysis
+              run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+    frontend:
+        name: Frontend
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+
+            - run: npm ci
+
+            - name: Typecheck
+              run: npm run types
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Check formatting
+              run: npm run format:check
+
+            - name: Build assets
+              run: npx vite build
+
+    tests:
+        name: Tests
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_DB: ads360_testing
+                    POSTGRES_USER: ads360
+                    POSTGRES_PASSWORD: ads360
+                ports: ['5432:5432']
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+            redis:
+                image: redis:7
+                ports: ['6379:6379']
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: pdo_pgsql, pgsql, redis, intl, zip, gd, bcmath
+                  coverage: none
+
+            - name: Install PHP dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            - name: Prepare environment
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+
+            - name: Run migrations
+              run: php artisan migrate --force
+              env:
+                  DB_DATABASE: ads360_testing
+
+            - name: Run the test suite
+              run: php artisan test
+
+    security:
+        name: Security checks
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  coverage: none
+
+            - name: Install PHP dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress
+
+            # Fails the build on a dependency with a known advisory (spec §98).
+            - name: Audit PHP dependencies
+              run: composer audit --abandoned=ignore
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+
+            - run: npm ci
+
+            - name: Audit npm dependencies
+              run: npm audit --audit-level=high
+
+            # A committed .env would expose real credentials (Rule 13).
+            - name: Ensure no environment file is committed
+              run: |
+                  if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+                    echo "::error::A .env file is tracked in git. Remove it and rotate every secret it held."
+                    exit 1
+                  fi
