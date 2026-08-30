@@ -46,8 +46,10 @@ enum Permission: string
     // Ad accounts
     case AdAccountsView = 'ad_accounts.view';
     case AdAccountsCreate = 'ad_accounts.create';
+    case AdAccountsUpdate = 'ad_accounts.update';
     case AdAccountsAssign = 'ad_accounts.assign';
     case AdAccountsManageHealth = 'ad_accounts.manage_health';
+    case AdAccountsManagePools = 'ad_accounts.manage_pools';
 
     // Pricing and exchange rates
     case PricingView = 'pricing.view';
@@ -108,6 +110,7 @@ enum Permission: string
             self::SettingsManage,
             self::ClientsSuspend,
             self::AdAccountsAssign,
+            self::AdAccountsManagePools,
         ], true);
     }
 
@@ -135,8 +138,10 @@ enum Permission: string
             self::PaymentsVerify => 'Verify and approve payments',
             self::AdAccountsView => 'View managed ad accounts',
             self::AdAccountsCreate => 'Add managed ad accounts',
+            self::AdAccountsUpdate => 'Update managed ad account settings and limits',
             self::AdAccountsAssign => 'Assign ad accounts to campaigns or clients',
             self::AdAccountsManageHealth => 'Manage ad account health and limits',
+            self::AdAccountsManagePools => 'Manage ad account pools and allocation rules',
             self::PricingView => 'View pricing plans',
             self::PricingManage => 'Change pricing plans and fees',
             self::ExchangeRatesView => 'View exchange rates',

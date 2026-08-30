@@ -95,6 +95,7 @@ final class AuditRecorder
         array $before,
         array $context = [],
         ?Organization $organization = null,
+        ?User $actor = null,
     ): AuditLog {
         $changes = $resource->getChanges();
         $original = [];
@@ -110,6 +111,7 @@ final class AuditRecorder
             after: $changes,
             context: $context,
             organization: $organization,
+            actor: $actor,
         );
     }
 

@@ -51,7 +51,9 @@ export default function ClientLayout({
             label: 'Advertising',
             items: [
                 { label: 'Campaigns', icon: Megaphone, pending: true },
-                { label: 'Advertising assets', icon: Plug, pending: true },
+                ...(can('assets.view')
+                    ? [{ label: 'Advertising assets', href: route('client.assets.index'), icon: Plug }]
+                    : []),
                 { label: 'Creative library', icon: Image, pending: true },
             ],
         },

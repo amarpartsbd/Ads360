@@ -84,5 +84,27 @@ return [
      */
     'advertising' => [
         'driver' => env('ADVERTISING_DRIVER', 'mock'),
+
+        /*
+         * When a managed ad account stops looking healthy (spec §20).
+         *
+         * Utilisation is measured against the account's own daily limit, so
+         * these are percentages rather than amounts — an account's ceiling is
+         * its own business, and a fixed figure would mean something different
+         * on every account.
+         */
+        'health' => [
+            'utilisation_warning_percent' => (int) env('AD_ACCOUNT_UTILISATION_WARNING', 80),
+            'utilisation_critical_percent' => (int) env('AD_ACCOUNT_UTILISATION_CRITICAL', 95),
+
+            // Consecutive sync failures before an account is treated as ill
+            // rather than as having had one bad request.
+            'failures_before_degraded' => (int) env('AD_ACCOUNT_FAILURES_DEGRADED', 2),
+            'failures_before_critical' => (int) env('AD_ACCOUNT_FAILURES_CRITICAL', 5),
+
+            // How long an account may go unchecked before its health is
+            // treated as unknown rather than as still good.
+            'stale_after_hours' => (int) env('AD_ACCOUNT_STALE_AFTER_HOURS', 6),
+        ],
     ],
 ];

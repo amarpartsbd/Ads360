@@ -130,6 +130,47 @@ What is implemented today, and what must be true before production.
 - Approving executes the payload recorded when the action was requested, so what
   runs is what was reviewed.
 
+### Provider connections and credentials
+
+- Access and refresh tokens are stored as `encrypted` casts. A dump of
+  `provider_connections` yields ciphertext, and a test asserts the stored bytes
+  differ from the token.
+- Both token columns are `$hidden`, so no `toArray()`, `toJson()` or Inertia
+  prop can carry one to a browser. A test loads the connected-assets page and
+  asserts no token appears in the response body.
+- Reads go through `accessToken()` / `refreshToken()` and writes through
+  `storeCredentials()` / `clearCredentials()`. Nothing else touches the columns,
+  which makes every credential access greppable.
+- A check constraint (`provider_connections_live_rows_have_credentials`) forbids
+  a row that claims to be usable while holding no credential, and disconnecting
+  clears the tokens in the same transaction as the revocation.
+- Queued provider work carries the connection's key, never the model, so
+  encrypted columns never reach the queue store.
+- OAuth state is stored as a SHA-256 hash, expires in 15 minutes, and is claimed
+  by a conditional `UPDATE` so it can be redeemed exactly once. The callback
+  re-derives the user and organization server-side and refuses a state issued
+  for a different one. A rejected state is audited without recording the state
+  value.
+- Authorisation codes are never logged or audited. The audit record for a
+  connection describes the grant — account name, scopes, expiry — and never the
+  credential behind it.
+- Platform staff cannot start an authorisation flow on a client's behalf; the
+  grant is made by the client in their own provider session.
+
+### Managed ad accounts
+
+- `ad_accounts` is not tenant-scoped and is never exposed to a client. Its
+  policy admits platform staff only, and feature tests assert a client user
+  receives 403 on every inventory route.
+- Provider error text is not stored or shown. Failures are recorded using the
+  adapter's client-safe message; a test asserts a provider error code does not
+  reach the stored `last_error`.
+- Health alerts go to platform staff holding `ad_accounts.manage_health`, never
+  to clients — an account may serve several clients at once.
+- Pool allocation rules are held behind `ad_accounts.manage_pools`, which is
+  marked sensitive in the permission registry: the rules decide whose money runs
+  through which account.
+
 ### Data handling
 
 - Provider credentials are never sent to the browser. Nothing in the shared
@@ -153,8 +194,10 @@ for an oversight:
   local development streams through the authorized controller instead.
 - Client risk scoring (§12) — Phase 9.
 
-- OAuth state validation and encrypted provider credentials (§16) — Phase 3.
 - Webhook signature verification (§52) — Phase 5.
+- Account allocation itself (§19) — Phase 4. Pools carry their rules and the
+  eligibility evaluator is in place; the engine that picks and holds an account
+  arrives with the campaign engine.
 
 - Reconciliation against provider spend (§78) — Phase 6. Wallet-level
   reconciliation exists (`Wallet::isReconciled()`) and is surfaced in the admin
@@ -176,8 +219,8 @@ From specification §98. Do not deploy to production until every line is true.
 [x] Wallet race-condition tests pass
 [x] Payment idempotency tests pass
 [ ] Campaign idempotency tests pass           Phase 4
-[ ] OAuth state validation exists             Phase 3
-[ ] Provider secrets encrypted                Phase 3
+[x] OAuth state validation exists
+[x] Provider secrets encrypted
 [x] Admin 2FA enabled
 [x] KYC files private
 [x] CSRF protections verified

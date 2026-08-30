@@ -83,6 +83,25 @@ enum AuditAction: string
     case InvoiceIssued = 'finance.invoice.issued';
     case InvoiceVoided = 'finance.invoice.voided';
 
+    // Advertising integrations (spec §16, §51)
+    case ProviderConnected = 'integration.provider.connected';
+    case ProviderReconnected = 'integration.provider.reconnected';
+    case ProviderDisconnected = 'integration.provider.disconnected';
+    case ProviderConnectionExpired = 'integration.provider.expired';
+    case ProviderConnectionRevoked = 'integration.provider.revoked';
+    case ProviderAssetsSynced = 'integration.provider.assets_synced';
+    case OAuthStateRejected = 'integration.oauth.state_rejected';
+
+    // Managed ad infrastructure (spec §17, §18, §20)
+    case AdAccountCreated = 'ad_account.created';
+    case AdAccountUpdated = 'ad_account.updated';
+    case AdAccountStatusChanged = 'ad_account.status_changed';
+    case AdAccountHealthChanged = 'ad_account.health_changed';
+    case AdAccountAssigned = 'ad_account.assigned';
+    case AdAccountPoolCreated = 'ad_account.pool.created';
+    case AdAccountPoolUpdated = 'ad_account.pool.updated';
+    case AdAccountPoolMembershipChanged = 'ad_account.pool.membership_changed';
+
     // Maker-checker (spec §25)
     case ApprovalRequested = 'governance.approval.requested';
     case ApprovalGranted = 'governance.approval.granted';

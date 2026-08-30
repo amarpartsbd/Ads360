@@ -4,6 +4,7 @@ import {
     ArrowLeftRight,
     Banknote,
     Building2,
+    Layers,
     LayoutDashboard,
     Megaphone,
     ScrollText,
@@ -65,7 +66,20 @@ export default function AdminLayout({
             label: 'Operations',
             items: [
                 { label: 'Campaign operations', icon: Megaphone, pending: true },
-                { label: 'Ad infrastructure', icon: Server, pending: true },
+                ...(can('ad_accounts.view')
+                    ? [
+                          {
+                              label: 'Ad accounts',
+                              href: route('admin.ad-accounts.index'),
+                              icon: Server,
+                          },
+                          {
+                              label: 'Account pools',
+                              href: route('admin.ad-account-pools.index'),
+                              icon: Layers,
+                          },
+                      ]
+                    : []),
                 { label: 'Analytics', icon: Activity, pending: true },
             ],
         },

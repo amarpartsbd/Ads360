@@ -8,11 +8,13 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 2 complete.** Authentication, tenancy, RBAC, audit logging,
-> business verification (KYC), team management, and the wallet, ledger, pricing,
-> exchange rate, deposit and invoice modules are in place and covered by tests.
-> The advertising, campaign and analytics modules are not yet built — see
-> [Roadmap](#roadmap).
+> **Status: Phase 3 complete.** Authentication, tenancy, RBAC, audit logging,
+> business verification (KYC), team management, the wallet, ledger, pricing,
+> exchange rate, deposit and invoice modules, and the advertising provider
+> abstraction — OAuth connections with encrypted credentials, connected asset
+> discovery, the managed ad account inventory, pools and health monitoring — are
+> in place and covered by tests. Campaign building, allocation and analytics are
+> not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -157,8 +159,8 @@ Phases follow the platform specification.
 | 0     | Auth, tenancy, RBAC, audit, design system                   | Complete    |
 | 1     | Client onboarding, KYC, team management                     | Complete    |
 | 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Complete    |
-| 3     | Provider abstraction, connected assets, ad account pools    | Next        |
-| 4     | Campaign builder, approval workflow, allocation, publishing | Planned     |
+| 3     | Provider abstraction, connected assets, ad account pools    | Complete    |
+| 4     | Campaign builder, approval workflow, allocation, publishing | Next        |
 | 5     | Meta integration                                            | Planned     |
 | 6     | Analytics pipeline, reporting, reconciliation               | Planned     |
 | 7     | Google Ads                                                  | Planned     |

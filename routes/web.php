@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\AdAccountController;
+use App\Http\Controllers\Admin\AdAccountPoolController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -11,10 +13,13 @@ use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Client\AssetController;
 use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Client\OrganizationSettingsController;
 use App\Http\Controllers\Client\OrganizationSwitchController;
+use App\Http\Controllers\Client\ProviderOAuthController;
 use App\Http\Controllers\Client\SecurityController;
+use App\Http\Controllers\Client\SimulatedConsentController;
 use App\Http\Controllers\Client\TeamController;
 use App\Http\Controllers\Client\VerificationController;
 use App\Http\Controllers\Client\WalletController;
@@ -113,6 +118,32 @@ Route::middleware(['auth', 'verified', 'tenant'])
         Route::get('wallet/payments/{payment}/return', [WalletController::class, 'overview'])
             ->name('wallet.payments.return');
 
+        /*
+         * Connected advertising assets (spec §15, §16).
+         *
+         * The OAuth round trip is throttled: `start` mints a state row on every
+         * call, and `callback` takes a value from an untrusted redirect.
+         */
+        Route::get('assets', [AssetController::class, 'index'])->name('assets.index');
+        Route::post('assets/connections/{connection}/sync', [AssetController::class, 'sync'])
+            ->name('assets.connections.sync');
+        Route::delete('assets/connections/{connection}', [AssetController::class, 'disconnect'])
+            ->name('assets.connections.disconnect');
+
+        Route::middleware('throttle:10,1')->group(function (): void {
+            Route::get('assets/connect/{provider}', [ProviderOAuthController::class, 'start'])
+                ->name('assets.oauth.start');
+            Route::get('assets/callback/{provider}', [ProviderOAuthController::class, 'callback'])
+                ->name('assets.oauth.callback');
+
+            // Development stand-in for a provider consent screen (spec §95).
+            // The controller refuses to answer in production.
+            Route::get('assets/simulate/{provider}', [SimulatedConsentController::class, 'show'])
+                ->name('assets.oauth.simulate');
+            Route::post('assets/simulate/{provider}', [SimulatedConsentController::class, 'submit'])
+                ->name('assets.oauth.simulate.submit');
+        });
+
         // Settings.
         Route::get('settings/organization', [OrganizationSettingsController::class, 'edit'])
             ->name('settings.organization');
@@ -189,6 +220,36 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
 
             Route::get('pricing', [FinanceController::class, 'pricing'])->name('pricing.index');
         });
+
+        /*
+         * Advertising infrastructure (spec §17, §18).
+         *
+         * Platform-only throughout: the inventory is shared between clients,
+         * and the pool rules decide whose money runs through which account.
+         */
+        Route::get('ad-accounts', [AdAccountController::class, 'index'])->name('ad-accounts.index');
+        Route::post('ad-accounts', [AdAccountController::class, 'store'])->name('ad-accounts.store');
+        Route::get('ad-accounts/{adAccount}', [AdAccountController::class, 'show'])->name('ad-accounts.show');
+        Route::put('ad-accounts/{adAccount}', [AdAccountController::class, 'update'])->name('ad-accounts.update');
+        Route::post('ad-accounts/{adAccount}/status', [AdAccountController::class, 'changeStatus'])
+            ->name('ad-accounts.status');
+        Route::post('ad-accounts/{adAccount}/refresh', [AdAccountController::class, 'refreshHealth'])
+            ->name('ad-accounts.refresh');
+
+        Route::get('ad-account-pools', [AdAccountPoolController::class, 'index'])
+            ->name('ad-account-pools.index');
+        Route::post('ad-account-pools', [AdAccountPoolController::class, 'store'])
+            ->name('ad-account-pools.store');
+        Route::get('ad-account-pools/{adAccountPool}', [AdAccountPoolController::class, 'show'])
+            ->name('ad-account-pools.show');
+        Route::put('ad-account-pools/{adAccountPool}', [AdAccountPoolController::class, 'update'])
+            ->name('ad-account-pools.update');
+        Route::post('ad-account-pools/{adAccountPool}/status', [AdAccountPoolController::class, 'changeStatus'])
+            ->name('ad-account-pools.status');
+        Route::post('ad-account-pools/{adAccountPool}/members', [AdAccountPoolController::class, 'addMember'])
+            ->name('ad-account-pools.members.store');
+        Route::delete('ad-account-pools/{adAccountPool}/members/{adAccount}', [AdAccountPoolController::class, 'removeMember'])
+            ->name('ad-account-pools.members.destroy');
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
     });

@@ -27,6 +27,21 @@ Redis, so a node can be replaced at any time.
 The scheduler may run on more than one node: scheduled jobs take distributed
 locks, so a task cannot double-execute.
 
+### Scheduled work
+
+`routes/console.php` holds the schedule. Both current entries only *queue*
+work — the provider calls happen on the `providers` queue, so a slow provider
+delays its own checks and nothing else.
+
+| Command | Cadence | What it does |
+| --- | --- | --- |
+| `ads:check-connections` | Hourly | Verifies each live client grant, refreshing tokens a day ahead of expiry and warning the client when it cannot |
+| `ads:check-ad-accounts` | Hourly | Asks each provider about the managed accounts in service, updating spend mirrors, billing standing and health |
+
+Both are `withoutOverlapping()` and `onOneServer()`. The `providers` queue is
+served by the `campaigns` Horizon supervisor; a deployment that adds queue nodes
+must include it.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production

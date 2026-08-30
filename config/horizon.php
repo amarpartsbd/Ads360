@@ -217,7 +217,7 @@ return [
 
         'campaigns' => [
             'connection' => 'redis',
-            'queue' => ['campaign_publish', 'campaign_sync', 'provider_webhooks'],
+            'queue' => ['campaign_publish', 'campaign_sync', 'provider_webhooks', 'providers'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,

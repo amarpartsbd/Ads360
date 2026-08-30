@@ -16,6 +16,8 @@ app/
 │   ├── Wallet/         Ledger, balances, reservations, adjustments, refunds
 │   ├── Payment/        Deposits, gateways, verification
 │   ├── Billing/        Pricing, exchange rates, invoices
+│   ├── Advertising/    Provider abstraction, managed ad accounts, pools
+│   ├── Integration/    Provider connections, OAuth state, connected assets
 │   ├── Audit/          Immutable audit trail and secret redaction
 │   ├── System/         Platform settings and feature flags
 │   └── …               Reserved for later phases (see §8)
@@ -266,7 +268,83 @@ two-approval threshold by clicking twice.
 Approving executes the recorded payload — not anything resubmitted alongside the
 approval — so what runs is what was approved.
 
-## 12. Money
+## 12. Advertising providers
+
+`app/Domains/Advertising/`, with the client-facing half in
+`app/Domains/Integration/`.
+
+**One contract, many platforms.** `AdvertisingProvider` is what the rest of the
+system talks to; `ProviderManager` resolves an adapter for a `Provider`. No
+caller branches on which platform it is dealing with.
+
+**Capabilities are asked, not assumed.** `supports(ProviderCapability)` answers
+whether an adapter can do a thing at all. A provider that cannot refresh tokens,
+enumerate assets or report spend says so, and the caller takes the documented
+fallback rather than discovering the gap in production.
+
+**Mock adapters are the development default.** `ADVERTISING_DRIVER=mock` gives
+the whole round trip — authorise, exchange, discover, verify, report health —
+with no live credentials and no app review. The mocks refuse to instantiate in
+production, and the simulated consent screen 404s there.
+
+### Connections and credentials
+
+`ProviderConnection` holds a client's grant. Three things guard the tokens:
+
+- both token columns are `encrypted` casts, so plaintext never reaches the
+  database;
+- both are `$hidden`, so no `toArray()`, `toJson()` or Inertia prop can carry
+  one to a browser;
+- reading goes through `accessToken()` / `refreshToken()` and writing through
+  `storeCredentials()` / `clearCredentials()`, so every credential access is one
+  grep away.
+
+A check constraint enforces the other half: a row that has not been revoked must
+still hold a credential, and a revoked one holds none.
+
+**OAuth state.** `OAuthStateGuard` stores only `hash('sha256', $state)`, so the
+stored row cannot be replayed as a callback. Redeeming checks unknown, consumed,
+expired, wrong user, wrong organization and provider mismatch, then claims the
+row with a conditional `UPDATE` so two simultaneous callbacks cannot both
+succeed. A rejected state is audited; the state value itself is never stored.
+
+**Assets are never deleted.** An asset missing from a discovery run becomes
+`PERMISSION_LOST` or `UNAVAILABLE`. Campaigns and reports point at it, and §62
+keeps records other records depend on.
+
+## 13. Managed ad accounts and pools
+
+`ad_accounts` is deliberately **not** tenant-scoped: the inventory is shared,
+one account may serve different clients over its life, and no client ever sees
+the table. `AdAccountPolicy` admits platform staff only, and the client-facing
+routes never touch it.
+
+Three statuses are tracked separately because they fail differently:
+
+| Column | Answers |
+| --- | --- |
+| `status` | Where the account sits in *our* lifecycle |
+| `health_status` | What observation says about it |
+| `billing_status` | Whether the provider will accept spend |
+
+`isAllocatable()` requires all three, and `scopeAllocatable()` expresses the same
+predicate in SQL — a test asserts the two agree.
+
+**Health monitoring.** `AdAccountHealthService` applies two rules that matter.
+A provider's silence is not a verdict: a transient failure moves a counter, and
+only a run of them changes health. And null is not zero: a figure the provider
+did not report leaves the stored value alone, because writing zero would report
+a busy account as idle and hand it straight back out.
+
+**Pools** group accounts of one provider and one currency — mixing either would
+make the pool's own comparisons meaningless. `AllocationRules` is the only way
+in or out of the stored rule document, so a malformed rule fails loudly instead
+of quietly ceasing to apply. `PoolEligibilityService` returns *reasons*, not a
+boolean: an operator looking at an empty pool needs to know which rule emptied
+it. The engine that picks one account from the eligible set arrives with the
+campaign work.
+
+## 14. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -276,7 +354,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 13. Conventions
+## 15. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -300,17 +378,17 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 14. Reserved domains
+## 16. Reserved domains
 
-`Agency`, `Advertising`, `AdAccount`, `Creative`, `Analytics`, `Integration`,
-`Notification`, `Support` exist as empty directories. The structure is declared up front so modules land
+`Agency`, `Creative`, `Analytics`, `Notification`, `Support` exist as empty
+directories. The structure is declared up front so modules land
 in the right place, but nothing is built until its phase.
 
 The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 15. Adding a module
+## 17. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

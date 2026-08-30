@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domains\Advertising\Models\AdAccount;
+use App\Domains\Advertising\Models\AdAccountPool;
+use App\Domains\Advertising\Policies\AdAccountPolicy;
+use App\Domains\Advertising\Policies\AdAccountPoolPolicy;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Audit\Policies\AuditLogPolicy;
 use App\Domains\Billing\Models\ExchangeRate;
@@ -21,6 +25,10 @@ use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
 use App\Domains\Identity\Policies\RolePolicy;
 use App\Domains\Identity\Policies\UserPolicy;
+use App\Domains\Integration\Models\ProviderAsset;
+use App\Domains\Integration\Models\ProviderConnection;
+use App\Domains\Integration\Policies\ProviderAssetPolicy;
+use App\Domains\Integration\Policies\ProviderConnectionPolicy;
 use App\Domains\Payment\Models\Payment;
 use App\Domains\Payment\Policies\PaymentPolicy;
 use App\Domains\System\Models\ApprovalRequest;
@@ -54,6 +62,10 @@ class AuthServiceProvider extends ServiceProvider
         ExchangeRate::class => ExchangeRatePolicy::class,
         PricingPlan::class => PricingPlanPolicy::class,
         ApprovalRequest::class => ApprovalRequestPolicy::class,
+        ProviderConnection::class => ProviderConnectionPolicy::class,
+        ProviderAsset::class => ProviderAssetPolicy::class,
+        AdAccount::class => AdAccountPolicy::class,
+        AdAccountPool::class => AdAccountPoolPolicy::class,
     ];
 
     public function boot(): void
