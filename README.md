@@ -8,10 +8,11 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 1 complete.** Authentication, tenancy, RBAC, audit logging,
-> business verification (KYC), team management and organization settings are in
-> place and covered by tests. The finance, advertising, campaign and analytics
-> modules are not yet built — see [Roadmap](#roadmap).
+> **Status: Phase 2 complete.** Authentication, tenancy, RBAC, audit logging,
+> business verification (KYC), team management, and the wallet, ledger, pricing,
+> exchange rate, deposit and invoice modules are in place and covered by tests.
+> The advertising, campaign and analytics modules are not yet built — see
+> [Roadmap](#roadmap).
 
 ---
 
@@ -114,7 +115,11 @@ The short version:
   leaks data.
 - **Tenant context is never taken from the request.** It is resolved
   server-side from the authenticated user's membership.
-- **Money is never a float.** See `app/Support/Values/Money.php`.
+- **Money is never a float**, and the ledger — not a balance column — is the
+  financial source of truth. See `app/Support/Values/Money.php` and
+  `app/Domains/Wallet/`.
+- **Every balance mutation locks the wallet row and re-reads under the lock.**
+  Proven by forked-process concurrency tests, which gate the finance module.
 - **Audit records are append-only.** The model refuses updates and deletes.
 - **Uploads are identified by their bytes**, not by the extension or MIME type
   the client claims. KYC files live on a private disk behind an authorized,
@@ -131,6 +136,9 @@ Security posture and the pre-deployment gate are documented in
   only through a policy-checked route that audits every read.
 - Invitation tokens stored only as hashes, single-use, and unable to grant
   more than the inviter holds.
+- An append-only ledger with database-enforced invariants, row-locked balance
+  mutations proven by real concurrent-process tests, and maker-checker approval
+  on high-value adjustments and refunds.
 - Per-account lockout plus a per-address-and-account rate limiter.
 - Encrypted, `HttpOnly`, `SameSite` session cookies; database-backed sessions
   so users can review and revoke their own.
@@ -148,8 +156,8 @@ Phases follow the platform specification.
 | ----- | ----------------------------------------------------------- | ----------- |
 | 0     | Auth, tenancy, RBAC, audit, design system                   | Complete    |
 | 1     | Client onboarding, KYC, team management                     | Complete    |
-| 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Next        |
-| 3     | Provider abstraction, connected assets, ad account pools    | Planned     |
+| 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Complete    |
+| 3     | Provider abstraction, connected assets, ad account pools    | Next        |
 | 4     | Campaign builder, approval workflow, allocation, publishing | Planned     |
 | 5     | Meta integration                                            | Planned     |
 | 6     | Analytics pipeline, reporting, reconciliation               | Planned     |
@@ -157,8 +165,8 @@ Phases follow the platform specification.
 | 8     | Agency and reseller module                                  | Planned     |
 | 9     | White label, advanced risk, AI assistance, enterprise APIs  | Planned     |
 
-Phase 2 does not start until the financial concurrency tests pass, and no phase
-starts until the tenant isolation suite is green.
+No phase starts until the tenant isolation suite is green, and the financial
+concurrency suite (`--group=concurrency`) gates everything that touches money.
 
 ## Provider policy
 

@@ -65,6 +65,29 @@ enum AuditAction: string
     case VerificationDocumentDeleted = 'compliance.document.deleted';
     case VerificationDocumentDownloaded = 'compliance.document.downloaded';
 
+    // Finance
+    case DepositSubmitted = 'finance.deposit.submitted';
+    case DepositApproved = 'finance.deposit.approved';
+    case DepositRejected = 'finance.deposit.rejected';
+    case PaymentInitiated = 'finance.payment.initiated';
+    case PaymentFailed = 'finance.payment.failed';
+    case WalletAdjusted = 'finance.wallet.adjusted';
+    case WalletFrozen = 'finance.wallet.frozen';
+    case WalletUnfrozen = 'finance.wallet.unfrozen';
+    case RefundIssued = 'finance.refund.issued';
+    case LedgerEntryReversed = 'finance.ledger.reversed';
+    case BudgetReserved = 'finance.budget.reserved';
+    case BudgetReleased = 'finance.budget.released';
+    case PricingChanged = 'finance.pricing.changed';
+    case ExchangeRateChanged = 'finance.exchange_rate.changed';
+    case InvoiceIssued = 'finance.invoice.issued';
+    case InvoiceVoided = 'finance.invoice.voided';
+
+    // Maker-checker (spec §25)
+    case ApprovalRequested = 'governance.approval.requested';
+    case ApprovalGranted = 'governance.approval.granted';
+    case ApprovalRejected = 'governance.approval.rejected';
+
     // Security
     case UnauthorizedAccessAttempt = 'security.unauthorized_access';
     case StepUpAuthenticationPassed = 'security.step_up.passed';
@@ -73,5 +96,14 @@ enum AuditAction: string
     {
         return str_starts_with($this->value, 'auth.')
             || str_starts_with($this->value, 'security.');
+    }
+
+    /**
+     * Financial events are retained and reviewed differently from the rest:
+     * they are what a reconciliation or a dispute is argued from.
+     */
+    public function isFinancialEvent(): bool
+    {
+        return str_starts_with($this->value, 'finance.');
     }
 }

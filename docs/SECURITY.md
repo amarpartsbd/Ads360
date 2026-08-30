@@ -97,6 +97,39 @@ What is implemented today, and what must be true before production.
   to another tenant cannot redeem the invitation.
 - The public invitation endpoints are rate limited.
 
+### Money
+
+- **The ledger is the source of truth**; wallet balance columns are a cache
+  written only by the ledger writer, in the same transaction as the entries they
+  summarise, and recomputable from them.
+- Ledger entries are append-only. The model refuses updates and deletes, and a
+  correction is a reversal that leaves both visible.
+- Database constraints, not application code, guarantee the invariants: a wallet
+  can never go negative, an entry moves money in exactly one direction, an entry
+  can be reversed at most once, and a payment can produce at most one deposit
+  entry.
+- Every balance mutation takes a row lock and **re-reads the balance under the
+  lock** before validating. Real forked-process tests prove two requests cannot
+  spend the same balance, over-allocate a reservation, lose a concurrent
+  deposit, or double-reverse an entry.
+- Amounts are integer minor units throughout. No monetary value is a float, in
+  the database, in PHP, in configuration, or in the browser — the interface
+  renders server-formatted strings and performs no arithmetic.
+- Currencies are never converted implicitly. A mismatch raises.
+
+### Separation of duties
+
+- A client submits a deposit; only platform staff holding `payments.verify`
+  confirm it. No client or agency role holds that permission, verified by a test
+  that walks each role.
+- Wallet adjustments and refunds are platform-only, and above a configured
+  threshold require a second approver who is not the requester. A unique index
+  prevents one person satisfying a two-approval threshold twice over.
+- Operations staff hold no financial permissions at all; finance staff hold no
+  campaign permissions. Both directions are asserted by tests.
+- Approving executes the payload recorded when the action was requested, so what
+  runs is what was reviewed.
+
 ### Data handling
 
 - Provider credentials are never sent to the browser. Nothing in the shared
@@ -119,12 +152,17 @@ for an oversight:
 - Signed temporary URLs for documents — implemented for S3-compatible disks;
   local development streams through the authorized controller instead.
 - Client risk scoring (§12) — Phase 9.
-- Maker-checker approvals (§25) — Phase 2.
+
 - OAuth state validation and encrypted provider credentials (§16) — Phase 3.
 - Webhook signature verification (§52) — Phase 5.
 
-- Wallet race-condition and payment idempotency tests (§56, §30) — Phase 2,
-  and Phase 2 does not start until they pass.
+- Reconciliation against provider spend (§78) — Phase 6. Wallet-level
+  reconciliation exists (`Wallet::isReconciled()`) and is surfaced in the admin
+  wallet view; the scheduled job that compares provider spend against the ledger
+  arrives with the analytics pipeline.
+- Live payment gateways (§33) — the provider abstraction and a mock adapter
+  exist; SSLCOMMERZ, bKash and Nagad adapters land when merchant accounts are
+  approved. Only manually verified methods are offered in the interface today.
 - Admin IP allowlisting — the configuration key exists
   (`ADMIN_IP_ALLOWLIST`); enforcement is not yet wired.
 
@@ -135,8 +173,8 @@ From specification §98. Do not deploy to production until every line is true.
 ```
 [x] Tenant isolation tests pass
 [x] Authorization tests pass
-[ ] Wallet race-condition tests pass          Phase 2
-[ ] Payment idempotency tests pass            Phase 2
+[x] Wallet race-condition tests pass
+[x] Payment idempotency tests pass
 [ ] Campaign idempotency tests pass           Phase 4
 [ ] OAuth state validation exists             Phase 3
 [ ] Provider secrets encrypted                Phase 3

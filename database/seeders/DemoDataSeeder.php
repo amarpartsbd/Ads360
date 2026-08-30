@@ -15,6 +15,8 @@ use App\Domains\Tenant\Enums\TenantStatus;
 use App\Domains\Tenant\Enums\TenantType;
 use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Models\Tenant;
+use App\Domains\Wallet\Services\WalletService;
+use App\Support\Values\Money;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -38,6 +40,7 @@ class DemoDataSeeder extends Seeder
         $this->seedDirectClient();
         $this->seedAgency();
         $this->seedPendingVerification();
+        $this->seedWallets();
     }
 
     private function seedPlatformStaff(): void
@@ -179,6 +182,38 @@ class DemoDataSeeder extends Seeder
         $manager = $this->makeUser('Demo Agency Manager', 'agency.manager@demo-agency.test', $tenant);
         $this->addMember($client, $manager);
         $this->grant($manager, 'agency-manager', $client);
+    }
+
+    /**
+     * Opening balances and a little history, so the wallet and ledger screens
+     * are not empty in development.
+     */
+    private function seedWallets(): void
+    {
+        $wallets = app(WalletService::class);
+
+        $organization = Organization::acrossTenants()->where('slug', 'demo-retail')->first();
+
+        if ($organization === null) {
+            return;
+        }
+
+        $wallet = $wallets->walletFor($organization);
+
+        if ($wallet->entries()->exists()) {
+            return;
+        }
+
+        $wallets->deposit($wallet, Money::of('250000.00', 'BDT'), 'Opening deposit (demo)');
+        $wallets->debit(
+            $wallet,
+            Money::of('18750.00', 'BDT'),
+            \App\Domains\Wallet\Enums\LedgerEntryType::ServiceFee,
+            'Platform fee (demo)',
+        );
+
+        // A live hold, so the reserved balance is visible.
+        $wallets->reserve($wallet, Money::of('40000.00', 'BDT'), $organization);
     }
 
     private function makeUser(string $name, string $email, ?Tenant $tenant, bool $platform = false): User

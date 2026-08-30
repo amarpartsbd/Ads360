@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import {
     Activity,
+    ArrowLeftRight,
     Banknote,
     Building2,
     LayoutDashboard,
@@ -9,7 +10,9 @@ import {
     Server,
     Settings,
     ShieldCheck,
+    Tag,
     Users,
+    Wallet,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { FlashMessages } from '@/Components/Layout/FlashMessages';
@@ -63,8 +66,45 @@ export default function AdminLayout({
             items: [
                 { label: 'Campaign operations', icon: Megaphone, pending: true },
                 { label: 'Ad infrastructure', icon: Server, pending: true },
-                { label: 'Finance', icon: Banknote, pending: true },
                 { label: 'Analytics', icon: Activity, pending: true },
+            ],
+        },
+        {
+            label: 'Finance',
+            items: [
+                ...(can('payments.verify')
+                    ? [
+                          {
+                              label: 'Deposits',
+                              href: route('admin.finance.deposits.index'),
+                              icon: Banknote,
+                          },
+                      ]
+                    : []),
+                ...(can('wallet.view')
+                    ? [{ label: 'Wallets', href: route('admin.finance.wallets.index'), icon: Wallet }]
+                    : []),
+                ...(can('wallet.adjust') || can('wallet.refund')
+                    ? [
+                          {
+                              label: 'Approvals',
+                              href: route('admin.finance.approvals.index'),
+                              icon: ShieldCheck,
+                          },
+                      ]
+                    : []),
+                ...(can('exchange_rates.view')
+                    ? [
+                          {
+                              label: 'Exchange rates',
+                              href: route('admin.finance.exchange-rates.index'),
+                              icon: ArrowLeftRight,
+                          },
+                      ]
+                    : []),
+                ...(can('pricing.view')
+                    ? [{ label: 'Pricing', href: route('admin.finance.pricing.index'), icon: Tag }]
+                    : []),
             ],
         },
         {

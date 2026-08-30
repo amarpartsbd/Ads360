@@ -13,6 +13,9 @@ app/
 │   ├── Tenant/         Tenants, organizations, membership, tenant context
 │   ├── Compliance/     Business verification, documents, review decisions
 │   ├── Client/         Private document storage and upload validation
+│   ├── Wallet/         Ledger, balances, reservations, adjustments, refunds
+│   ├── Payment/        Deposits, gateways, verification
+│   ├── Billing/        Pricing, exchange rates, invoices
 │   ├── Audit/          Immutable audit trail and secret redaction
 │   ├── System/         Platform settings and feature flags
 │   └── …               Reserved for later phases (see §8)
@@ -190,7 +193,80 @@ redemption: the state when the email was sent is not evidence of the state now.
 `ManageTeamMember` guards the other direction: an organization can never be left
 with nobody able to administer it, and nobody may act on their own membership.
 
-## 9. Money
+## 9. The ledger
+
+The financial rule the whole module protects: **the ledger is the truth, and the
+wallet's balance columns are a cache of it.** They are named `_cached` for that
+reason, they are written only by `LedgerWriter`, and `Wallet::isReconciled()`
+recomputes them from the entries so drift is detectable rather than invisible.
+
+`ledger_entries` is append-only. A mistake is corrected by a reversal pointing
+back at the entry it undoes, so both remain visible. Database constraints carry
+the invariants that must never depend on application code:
+
+- an entry moves money in exactly one direction (`debit` xor `credit`);
+- balances and snapshots can never go negative;
+- an entry may be reversed at most once;
+- at most one `DEPOSIT` entry may reference a given payment.
+
+**Available and reserved.** `debit`/`credit` move the available balance;
+`reserved_delta` moves the reserved one. A reservation debits available and adds
+to reserved; a release does the reverse. Spending against a hold is therefore
+*two* entries in one transaction group — a `RELEASE` back to available, then a
+`CAMPAIGN_SPEND` debit out of the wallet. That keeps every entry single-sided
+and makes a statement read the way the money actually moved.
+
+### Concurrency
+
+`LedgerWriter::post()` opens a transaction, takes `SELECT … FOR UPDATE` on the
+wallet, and **re-reads the balances after the lock is held**. That last step is
+the one that matters: a balance read before the lock is a balance another
+request may already have spent.
+
+**Lock ordering is wallet, then reservation, everywhere.** `reserve()` locks the
+wallet before inserting the reservation row, because that insert takes a share
+lock on the same wallet through its foreign key — acquiring the exclusive lock
+afterwards deadlocked two concurrent reservations. The concurrency suite caught
+it, which is what it is for.
+
+`tests/Feature/Wallet/WalletConcurrencyTest.php` forks real processes that
+compete for one wallet. It is a gate: nothing in finance ships while it is red.
+
+## 10. Pricing, rates and invoices
+
+**Pricing** resolves most-specific-first — client override, then tenant plan,
+then platform default — and takes the first active plan whole. Plans are not
+merged, so an override is easy to reason about and impossible to half-apply.
+Tax is computed last, over the fee subtotal, because it applies to what the
+platform charges rather than to the client's ad budget.
+
+**Exchange rates** are effective-dated and never edited; publishing closes the
+previous row. A conversion returns the rate alongside the amount so the caller
+stores the snapshot with the transaction — history is never recalculated with
+today's rate. A missing rate raises rather than guessing.
+
+Every priced amount and every conversion carries a snapshot onto the ledger
+entry, so an invoice from six months ago explains itself even after the plan and
+the rate have changed.
+
+**Invoices** freeze on issue: the model refuses to change a financial field once
+finalised, and a correction is a void plus a credit note.
+
+## 11. Maker-checker
+
+Actions above a configured threshold do not execute on request. They become an
+`approval_request` carrying the payload needed to run them later, and only
+execute once enough *other* people have approved.
+
+Two rules do the work, and neither depends on the interface: the requester can
+never approve their own request, and a unique index on
+`(approval_request_id, approver_id)` means one person cannot satisfy a
+two-approval threshold by clicking twice.
+
+Approving executes the recorded payload — not anything resubmitted alongside the
+approval — so what runs is what was approved.
+
+## 12. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -200,7 +276,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 10. Conventions
+## 13. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -224,18 +300,17 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 11. Reserved domains
+## 14. Reserved domains
 
-`Agency`, `Advertising`, `AdAccount`, `Creative`, `Wallet`, `Billing`,
-`Payment`, `Analytics`, `Integration`, `Notification`, `Support` exist as empty
-directories. The structure is declared up front so modules land
+`Agency`, `Advertising`, `AdAccount`, `Creative`, `Analytics`, `Integration`,
+`Notification`, `Support` exist as empty directories. The structure is declared up front so modules land
 in the right place, but nothing is built until its phase.
 
 The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 12. Adding a module
+## 15. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

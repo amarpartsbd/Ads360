@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ClientController;
+use App\Http\Controllers\Admin\DepositController;
+use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
@@ -14,6 +17,8 @@ use App\Http\Controllers\Client\OrganizationSwitchController;
 use App\Http\Controllers\Client\SecurityController;
 use App\Http\Controllers\Client\TeamController;
 use App\Http\Controllers\Client\VerificationController;
+use App\Http\Controllers\Client\WalletController;
+use App\Http\Controllers\Shared\PaymentProofDownloadController;
 use App\Http\Controllers\Shared\VerificationDocumentDownloadController;
 use App\Http\Controllers\Shared\WelcomeController;
 use Illuminate\Support\Facades\Route;
@@ -88,6 +93,26 @@ Route::middleware(['auth', 'verified', 'tenant'])
         Route::delete('team/members/{member}', [TeamController::class, 'remove'])
             ->name('team.members.remove');
 
+        /*
+         * Wallet and billing (spec §14).
+         *
+         * Every amount rendered here is computed and formatted server-side; the
+         * browser never performs money arithmetic (Rule 8).
+         */
+        Route::get('wallet', [WalletController::class, 'overview'])->name('wallet.overview');
+        Route::get('wallet/transactions', [WalletController::class, 'transactions'])
+            ->name('wallet.transactions');
+        Route::get('wallet/add-funds', [WalletController::class, 'deposits'])->name('wallet.add-funds');
+        Route::post('wallet/deposits', [WalletController::class, 'storeDeposit'])
+            ->name('wallet.deposits.store');
+        Route::get('wallet/invoices', [WalletController::class, 'invoices'])->name('wallet.invoices');
+        Route::get('wallet/payments/{payment}/proof', PaymentProofDownloadController::class)
+            ->name('wallet.payments.proof');
+
+        // Where a gateway returns the client after a hosted checkout.
+        Route::get('wallet/payments/{payment}/return', [WalletController::class, 'overview'])
+            ->name('wallet.payments.return');
+
         // Settings.
         Route::get('settings/organization', [OrganizationSettingsController::class, 'edit'])
             ->name('settings.organization');
@@ -126,6 +151,44 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
             ->name('verification.review');
         Route::get('verification/documents/{document}', VerificationDocumentDownloadController::class)
             ->name('verification.documents.download');
+
+        /*
+         * Finance (spec §41).
+         *
+         * Verifying a deposit and adjusting a balance are the two most
+         * consequential actions on the platform; both are permission-gated and
+         * audited, and both are above the maker-checker threshold at size.
+         */
+        Route::prefix('finance')->name('finance.')->group(function (): void {
+            Route::get('deposits', [DepositController::class, 'index'])->name('deposits.index');
+            Route::post('deposits/{payment}/verify', [DepositController::class, 'verify'])
+                ->name('deposits.verify');
+            Route::post('deposits/{payment}/reject', [DepositController::class, 'reject'])
+                ->name('deposits.reject');
+            Route::get('deposits/{payment}/proof', PaymentProofDownloadController::class)
+                ->name('deposits.proof');
+
+            Route::get('wallets', [FinanceController::class, 'wallets'])->name('wallets.index');
+            Route::get('wallets/{wallet}', [FinanceController::class, 'showWallet'])
+                ->name('wallets.show');
+            Route::post('wallets/{wallet}/adjust', [FinanceController::class, 'adjust'])
+                ->name('wallets.adjust');
+            Route::post('wallets/{wallet}/refund', [FinanceController::class, 'refund'])
+                ->name('wallets.refund');
+
+            Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+            Route::post('approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])
+                ->name('approvals.approve');
+            Route::post('approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])
+                ->name('approvals.reject');
+
+            Route::get('exchange-rates', [FinanceController::class, 'exchangeRates'])
+                ->name('exchange-rates.index');
+            Route::post('exchange-rates', [FinanceController::class, 'publishRate'])
+                ->name('exchange-rates.store');
+
+            Route::get('pricing', [FinanceController::class, 'pricing'])->name('pricing.index');
+        });
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
     });

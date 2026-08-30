@@ -58,9 +58,19 @@ export default function ClientLayout({
         {
             label: 'Finance',
             items: [
-                { label: 'Wallet', icon: Wallet, pending: true },
-                { label: 'Billing', icon: CreditCard, pending: true },
-                { label: 'Statements', icon: FileText, pending: true },
+                ...(can('wallet.view')
+                    ? [
+                          { label: 'Wallet', href: route('client.wallet.overview'), icon: Wallet },
+                          {
+                              label: 'Statement',
+                              href: route('client.wallet.transactions'),
+                              icon: FileText,
+                          },
+                      ]
+                    : []),
+                ...(can('payments.view')
+                    ? [{ label: 'Invoices', href: route('client.wallet.invoices'), icon: CreditCard }]
+                    : []),
             ],
         },
         {

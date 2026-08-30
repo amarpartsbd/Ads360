@@ -101,6 +101,28 @@ final class Money implements JsonSerializable, Stringable
         );
     }
 
+    /**
+     * A percentage of this amount, e.g. `percentage('7.5')` for 7.5%.
+     *
+     * Done as one exact fraction — amount × percent ÷ 100 — rather than
+     * converting the percentage to a ratio first. Two chained operations would
+     * round twice and can land a minor unit away from the true value, which on
+     * a fee is a real discrepancy a client can find.
+     */
+    public function percentage(string|int $percent, string $rounding = self::ROUND_HALF_UP): self
+    {
+        $fraction = self::decimalToFraction((string) $percent);
+
+        return new self(
+            self::round(
+                $this->minorUnits * $fraction['numerator'],
+                $fraction['denominator'] * 100,
+                $rounding,
+            ),
+            $this->currency,
+        );
+    }
+
     public function dividedBy(string|int $divisor, string $rounding = self::ROUND_HALF_UP): self
     {
         $scaled = self::decimalToFraction((string) $divisor);

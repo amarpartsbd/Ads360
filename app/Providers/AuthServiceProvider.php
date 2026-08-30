@@ -6,6 +6,12 @@ namespace App\Providers;
 
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Audit\Policies\AuditLogPolicy;
+use App\Domains\Billing\Models\ExchangeRate;
+use App\Domains\Billing\Models\Invoice;
+use App\Domains\Billing\Models\PricingPlan;
+use App\Domains\Billing\Policies\ExchangeRatePolicy;
+use App\Domains\Billing\Policies\InvoicePolicy;
+use App\Domains\Billing\Policies\PricingPlanPolicy;
 use App\Domains\Compliance\Models\VerificationDocument;
 use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Compliance\Policies\VerificationDocumentPolicy;
@@ -15,11 +21,17 @@ use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
 use App\Domains\Identity\Policies\RolePolicy;
 use App\Domains\Identity\Policies\UserPolicy;
+use App\Domains\Payment\Models\Payment;
+use App\Domains\Payment\Policies\PaymentPolicy;
+use App\Domains\System\Models\ApprovalRequest;
+use App\Domains\System\Policies\ApprovalRequestPolicy;
 use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Models\Tenant;
 use App\Domains\Tenant\Policies\OrganizationPolicy;
 use App\Domains\Tenant\Policies\TenantPolicy;
 use App\Domains\Tenant\Services\TenantContext;
+use App\Domains\Wallet\Models\Wallet;
+use App\Domains\Wallet\Policies\WalletPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -36,6 +48,12 @@ class AuthServiceProvider extends ServiceProvider
         AuditLog::class => AuditLogPolicy::class,
         VerificationProfile::class => VerificationProfilePolicy::class,
         VerificationDocument::class => VerificationDocumentPolicy::class,
+        Wallet::class => WalletPolicy::class,
+        Payment::class => PaymentPolicy::class,
+        Invoice::class => InvoicePolicy::class,
+        ExchangeRate::class => ExchangeRatePolicy::class,
+        PricingPlan::class => PricingPlanPolicy::class,
+        ApprovalRequest::class => ApprovalRequestPolicy::class,
     ];
 
     public function boot(): void

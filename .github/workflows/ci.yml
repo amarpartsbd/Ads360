@@ -112,6 +112,11 @@ jobs:
             - name: Run the test suite
               run: php artisan test
 
+            # Run again on its own so a failure here is unmistakable in the log:
+            # these gate every module that touches money (spec §56, §98).
+            - name: Financial concurrency gate
+              run: php artisan test --group=concurrency
+
     security:
         name: Security checks
         runs-on: ubuntu-latest

@@ -40,6 +40,32 @@ return [
     ],
 
     /*
+     * Finance settings (spec §83). Amounts are integer minor units so no
+     * monetary value is ever configured as a float.
+     */
+    'finance' => [
+        'minimum_deposit_minor' => (int) env('FINANCE_MINIMUM_DEPOSIT_MINOR', 100000),
+
+        /*
+         * Maker-checker thresholds (spec §25). An action at or above the
+         * threshold needs a second, different person to approve it before it
+         * takes effect. Zero would mean "always", which is why the default is
+         * a real amount rather than a flag.
+         */
+        'maker_checker' => [
+            'wallet_adjustment_minor' => (int) env('FINANCE_MAKER_CHECKER_ADJUSTMENT_MINOR', 5000000),
+            'refund_minor' => (int) env('FINANCE_MAKER_CHECKER_REFUND_MINOR', 5000000),
+        ],
+
+        // How long an unfunded payment intent stays open before it is expired.
+        'payment_intent_ttl_minutes' => (int) env('FINANCE_PAYMENT_INTENT_TTL', 60),
+
+        // Invoice numbering.
+        'invoice_prefix' => env('FINANCE_INVOICE_PREFIX', 'INV'),
+        'invoice_due_days' => (int) env('FINANCE_INVOICE_DUE_DAYS', 14),
+    ],
+
+    /*
      * Feature flags for staged rollout (spec §84). Modules from later phases
      * stay dark until their flag is turned on.
      */

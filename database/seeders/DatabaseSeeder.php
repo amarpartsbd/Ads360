@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
+            // Pricing and rates are configuration the platform needs to
+            // function, not fixtures.
+            FinanceSeeder::class,
         ]);
 
         if (! app()->isProduction()) {
