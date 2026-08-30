@@ -47,7 +47,15 @@ export default function AdminLayout({
                     ? [{ label: 'All clients', href: route('admin.clients.index'), icon: Building2 }]
                     : []),
                 { label: 'Agencies', icon: Users, pending: true },
-                { label: 'Compliance', icon: ShieldCheck, pending: true },
+                ...(can('clients.verify')
+                    ? [
+                          {
+                              label: 'Compliance',
+                              href: route('admin.verification.index'),
+                              icon: ShieldCheck,
+                          },
+                      ]
+                    : []),
             ],
         },
         {

@@ -6,6 +6,10 @@ namespace App\Providers;
 
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Audit\Policies\AuditLogPolicy;
+use App\Domains\Compliance\Models\VerificationDocument;
+use App\Domains\Compliance\Models\VerificationProfile;
+use App\Domains\Compliance\Policies\VerificationDocumentPolicy;
+use App\Domains\Compliance\Policies\VerificationProfilePolicy;
 use App\Domains\Identity\Enums\Permission as PermissionEnum;
 use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
@@ -30,6 +34,8 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Role::class => RolePolicy::class,
         AuditLog::class => AuditLogPolicy::class,
+        VerificationProfile::class => VerificationProfilePolicy::class,
+        VerificationDocument::class => VerificationDocumentPolicy::class,
     ];
 
     public function boot(): void

@@ -8,10 +8,10 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 0 (foundation) complete.** Authentication, tenancy, RBAC,
-> audit logging and the design system are in place and covered by tests. The
-> finance, advertising, campaign and analytics modules are not yet built — see
-> [Roadmap](#roadmap).
+> **Status: Phase 1 complete.** Authentication, tenancy, RBAC, audit logging,
+> business verification (KYC), team management and organization settings are in
+> place and covered by tests. The finance, advertising, campaign and analytics
+> modules are not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -71,6 +71,14 @@ account uses the password `Ads360-Demo-Password!1`.
 | `accountant@demo-retail.test`       | Client Accountant | Client |
 | `viewer@demo-retail.test`           | Client Viewer     | Client |
 | `agency.owner@demo-agency.test`     | Agency Owner      | Client |
+| `owner@riverside-foods.test`        | Client Owner      | Client |
+
+`Riverside Foods` is seeded with a verification submission sitting in the
+compliance queue, so the review screens have something to show.
+
+**Administrator accounts require two-factor authentication** (spec §9), so a
+freshly seeded admin is held at the enrolment page until they enrol. To skip
+that while working locally, set `ADMIN_REQUIRE_TWO_FACTOR=false` in `.env`.
 
 ## Commands
 
@@ -108,6 +116,9 @@ The short version:
   server-side from the authenticated user's membership.
 - **Money is never a float.** See `app/Support/Values/Money.php`.
 - **Audit records are append-only.** The model refuses updates and deletes.
+- **Uploads are identified by their bytes**, not by the extension or MIME type
+  the client claims. KYC files live on a private disk behind an authorized,
+  audited download route.
 
 ## Security
 
@@ -116,6 +127,10 @@ Security posture and the pre-deployment gate are documented in
 
 - Argon2id password hashing, TOTP two-factor with recovery codes,
   mandatory two-factor for administrators.
+- KYC documents on private storage, validated by file signature, reachable
+  only through a policy-checked route that audits every read.
+- Invitation tokens stored only as hashes, single-use, and unable to grant
+  more than the inviter holds.
 - Per-account lockout plus a per-address-and-account rate limiter.
 - Encrypted, `HttpOnly`, `SameSite` session cookies; database-backed sessions
   so users can review and revoke their own.
@@ -132,8 +147,8 @@ Phases follow the platform specification.
 | Phase | Scope                                                       | Status      |
 | ----- | ----------------------------------------------------------- | ----------- |
 | 0     | Auth, tenancy, RBAC, audit, design system                   | Complete    |
-| 1     | Client onboarding, KYC, team management                     | Next        |
-| 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Planned     |
+| 1     | Client onboarding, KYC, team management                     | Complete    |
+| 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Next        |
 | 3     | Provider abstraction, connected assets, ad account pools    | Planned     |
 | 4     | Campaign builder, approval workflow, allocation, publishing | Planned     |
 | 5     | Meta integration                                            | Planned     |

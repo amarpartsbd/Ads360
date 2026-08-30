@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Badge } from '@/Components/UI/Badge';
+import { StatusBadge } from '@/Components/UI/StatusBadge';
 import { Button } from '@/Components/UI/Button';
 import { Card, CardBody, CardHeader } from '@/Components/UI/Card';
 import AdminLayout from '@/Layouts/AdminLayout';
@@ -20,7 +21,22 @@ interface OrganizationDetail {
     tenant: { name: string; type: string; status: string };
 }
 
-export default function ClientShow({ organization }: { organization: OrganizationDetail }) {
+interface VerificationSummary {
+    id: string;
+    status: string;
+    statusLabel: string;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    reviewUrl: string;
+}
+
+export default function ClientShow({
+    organization,
+    verification,
+}: {
+    organization: OrganizationDetail;
+    verification: VerificationSummary | null;
+}) {
     return (
         <AdminLayout
             title={organization.name}
@@ -76,12 +92,42 @@ export default function ClientShow({ organization }: { organization: Organizatio
             <Card>
                 <CardHeader
                     title="Business verification"
-                    description="Document review and risk scoring arrive with the compliance module."
+                    action={
+                        verification ? (
+                            <StatusBadge status={verification.status} label={verification.statusLabel} />
+                        ) : null
+                    }
                 />
                 <CardBody>
-                    <p className="text-sm text-muted-foreground">
-                        No verification profile has been submitted for this organization yet.
-                    </p>
+                    {verification ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                                <Detail
+                                    label="Submitted"
+                                    value={
+                                        verification.submittedAt
+                                            ? new Date(verification.submittedAt).toLocaleString()
+                                            : null
+                                    }
+                                />
+                                <Detail
+                                    label="Last reviewed"
+                                    value={
+                                        verification.reviewedAt
+                                            ? new Date(verification.reviewedAt).toLocaleString()
+                                            : null
+                                    }
+                                />
+                            </dl>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={verification.reviewUrl}>Open review</Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            This organization has not started business verification yet.
+                        </p>
+                    )}
                 </CardBody>
             </Card>
         </AdminLayout>

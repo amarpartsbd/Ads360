@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Domains\Compliance\Enums\VerificationStatus;
+use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Enums\MembershipStatus;
@@ -68,6 +70,33 @@ trait CreatesTenantWorkspaces
         $this->grantRole($user, $roleSlug);
 
         return $user;
+    }
+
+    /**
+     * A verification profile for an organization, in whatever state the test
+     * needs. Created through the factory so the shape stays in one place.
+     */
+    protected function createVerificationProfile(
+        Organization $organization,
+        VerificationStatus $status = VerificationStatus::NotSubmitted,
+    ): VerificationProfile {
+        $state = match ($status) {
+            VerificationStatus::Pending => 'submitted',
+            VerificationStatus::UnderReview => 'underReview',
+            VerificationStatus::Verified => 'verified',
+            VerificationStatus::RequiresInformation => 'requiresInformation',
+            default => null,
+        };
+
+        $factory = VerificationProfile::factory()->forOrganization($organization);
+
+        if ($state !== null) {
+            $factory = $factory->{$state}();
+        } else {
+            $factory = $factory->state(['status' => $status]);
+        }
+
+        return $factory->create();
     }
 
     /** Adds an existing user to another organization within their own tenant. */

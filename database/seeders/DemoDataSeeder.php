@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domains\Compliance\Enums\VerificationStatus;
+use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Identity\Enums\UserStatus;
 use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
@@ -35,6 +37,7 @@ class DemoDataSeeder extends Seeder
         $this->seedPlatformStaff();
         $this->seedDirectClient();
         $this->seedAgency();
+        $this->seedPendingVerification();
     }
 
     private function seedPlatformStaff(): void
@@ -82,6 +85,71 @@ class DemoDataSeeder extends Seeder
             $this->addMember($organization, $user);
             $this->grant($user, $roleSlug, $organization);
         }
+    }
+
+    /**
+     * A second client sitting in the compliance queue, so the review screens
+     * have something realistic to show in development.
+     */
+    private function seedPendingVerification(): void
+    {
+        $tenant = Tenant::query()->firstOrCreate(
+            ['slug' => 'demo-pending'],
+            [
+                'name' => 'Riverside Foods',
+                'type' => TenantType::DirectClient,
+                'status' => TenantStatus::Active,
+                'billing_email' => 'billing@riverside-foods.test',
+                'country' => 'BD',
+                'timezone' => 'Asia/Dhaka',
+                'default_currency' => 'BDT',
+            ],
+        );
+
+        $organization = $this->makeOrganization($tenant, 'Riverside Foods', 'riverside-foods');
+        $organization->forceFill(['status' => OrganizationStatus::UnderReview])->save();
+
+        $owner = $this->makeUser('Riverside Owner', 'owner@riverside-foods.test', $tenant);
+        $this->addMember($organization, $owner);
+        $this->grant($owner, 'client-owner', $organization);
+
+        $exists = VerificationProfile::query()
+            ->withoutGlobalScopes()
+            ->where('organization_id', $organization->getKey())
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $profile = new VerificationProfile([
+            'legal_business_name' => 'Riverside Foods Limited',
+            'trading_name' => 'Riverside Foods',
+            'business_type' => 'Food and beverage',
+            'website' => 'https://riverside-foods.test',
+            'contact_number' => '+8801700000010',
+            'business_email' => 'hello@riverside-foods.test',
+            'address_line_1' => '42 Riverside Road',
+            'city' => 'Dhaka',
+            'state' => 'Dhaka',
+            'postal_code' => '1207',
+            'country' => 'BD',
+            'authorized_person_name' => 'Riverside Owner',
+            'authorized_person_designation' => 'Managing Director',
+            'authorized_person_email' => 'owner@riverside-foods.test',
+            'authorized_person_phone' => '+8801700000011',
+            'trade_license_number' => 'TRAD-000000',
+            'tin' => '100000000',
+            'expected_monthly_spend_minor' => 75_000_00,
+            'expected_monthly_spend_currency' => 'BDT',
+            'advertising_category' => 'Restaurants',
+        ]);
+
+        $profile->organization_id = $organization->getKey();
+        $profile->tenant_id = $tenant->getKey();
+        $profile->status = VerificationStatus::Pending;
+        $profile->submitted_at = now()->subDays(2);
+        $profile->save();
     }
 
     private function seedAgency(): void

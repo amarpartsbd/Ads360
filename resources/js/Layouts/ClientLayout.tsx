@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import {
     BarChart3,
+    Building2,
     CreditCard,
     FileText,
     Image,
@@ -9,6 +10,7 @@ import {
     Megaphone,
     Plug,
     Settings,
+    ShieldCheck,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -40,7 +42,10 @@ export default function ClientLayout({
 
     const sections: NavSection[] = [
         {
-            items: [{ label: 'Dashboard', href: route('client.dashboard'), icon: LayoutDashboard }],
+            items: [
+                { label: 'Dashboard', href: route('client.dashboard'), icon: LayoutDashboard },
+                { label: 'Verification', href: route('client.verification.show'), icon: ShieldCheck },
+            ],
         },
         {
             label: 'Advertising',
@@ -69,7 +74,8 @@ export default function ClientLayout({
                     ? [{ label: 'Team', href: route('client.team.index'), icon: Users }]
                     : []),
                 { label: 'Support', icon: LifeBuoy, pending: true },
-                { label: 'Settings', href: route('client.security.edit'), icon: Settings },
+                { label: 'Organization', href: route('client.settings.organization'), icon: Building2 },
+                { label: 'Security', href: route('client.security.edit'), icon: Settings },
             ],
         },
     ];

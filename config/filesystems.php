@@ -49,6 +49,30 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Private business documents — KYC files, trade licences, proof of
+         * payment. Never publicly reachable: access goes through a
+         * policy-checked controller that issues a short-lived signed URL
+         * (spec §55). In production this points at S3 or Cloudflare R2 with a
+         * bucket that has no public access.
+         */
+        'documents' => [
+            'driver' => env('DOCUMENTS_DISK_DRIVER', 'local'),
+            'root' => storage_path('app/documents'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+
+            // Used when DOCUMENTS_DISK_DRIVER=s3.
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_DOCUMENTS_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

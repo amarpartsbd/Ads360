@@ -64,6 +64,39 @@ What is implemented today, and what must be true before production.
 - CSRF protection on every state-changing route (Laravel default).
 - Nginx serves PHP only through the front controller and denies dotfiles.
 
+### Business verification and documents
+
+- A client can prepare and submit their own verification but can never decide
+  it. `clients.verify` is held by platform roles only, and the policy denies
+  `review` to every client and agency role — verified by a test that walks each
+  role in turn.
+- Platform staff cannot edit a client's declaration, and cannot delete a
+  client's evidence.
+- KYC files are stored on a private disk with random object keys, identified by
+  file signature rather than by the client's declared MIME type, and size- and
+  dimension-checked. A rejected upload writes nothing.
+- Documents are reachable only through a policy-checked route that streams them
+  with `nosniff` and a restrictive CSP. **Every read is audited.**
+- A document's storage location (`disk`, `path`, `checksum`) is hidden from
+  serialisation, so it cannot leak through a response.
+- Internal compliance notes are `$hidden` on the model and never included in a
+  client-facing response — asserted by a test that greps the rendered client
+  page for a planted internal note.
+- A check constraint prevents an incomplete verification from entering the
+  compliance queue, whatever application code attempts.
+
+### Invitations
+
+- Only a SHA-256 of the token is stored; the plaintext exists once, in transit.
+- Tokens are single-use, expire after seven days, and are replaced on resend so
+  a forwarded email stops working.
+- An invitation cannot carry permissions the inviter does not hold, and a client
+  cannot invite anyone into a platform role.
+- Acceptance re-validates the address, the tenant and the account type: a
+  platform account cannot join a client organization, and an account belonging
+  to another tenant cannot redeem the invitation.
+- The public invitation endpoints are rate limited.
+
 ### Data handling
 
 - Provider credentials are never sent to the browser. Nothing in the shared
@@ -83,10 +116,13 @@ for an oversight:
 
 - Step-up authentication on privileged actions (§9) — password confirmation is
   wired, the per-action gate arrives with the finance module.
+- Signed temporary URLs for documents — implemented for S3-compatible disks;
+  local development streams through the authorized controller instead.
+- Client risk scoring (§12) — Phase 9.
 - Maker-checker approvals (§25) — Phase 2.
 - OAuth state validation and encrypted provider credentials (§16) — Phase 3.
 - Webhook signature verification (§52) — Phase 5.
-- Private object storage and signed URLs for KYC documents (§55) — Phase 1.
+
 - Wallet race-condition and payment idempotency tests (§56, §30) — Phase 2,
   and Phase 2 does not start until they pass.
 - Admin IP allowlisting — the configuration key exists
@@ -105,7 +141,7 @@ From specification §98. Do not deploy to production until every line is true.
 [ ] OAuth state validation exists             Phase 3
 [ ] Provider secrets encrypted                Phase 3
 [x] Admin 2FA enabled
-[ ] KYC files private                         Phase 1
+[x] KYC files private
 [x] CSRF protections verified
 [x] Rate limits configured
 [ ] Webhook signatures verified               Phase 5

@@ -1,7 +1,11 @@
-import { CheckCircle2, Circle, Lock } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { ArrowRight, CheckCircle2, Circle, Lock } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Alert } from '@/Components/UI/Alert';
 import { Badge } from '@/Components/UI/Badge';
+import { Button } from '@/Components/UI/Button';
 import { Card, CardBody, CardHeader } from '@/Components/UI/Card';
+import { StatusBadge } from '@/Components/UI/StatusBadge';
 import ClientLayout from '@/Layouts/ClientLayout';
 
 interface OnboardingStep {
@@ -9,43 +13,48 @@ interface OnboardingStep {
     label: string;
     complete: boolean;
     available: boolean;
+    href: string | null;
 }
 
 export default function Dashboard({
     organization,
+    verification,
     onboarding,
 }: {
     organization: { name: string; status: string; statusLabel: string; currency: string };
+    verification: {
+        status: string;
+        statusLabel: string;
+        description: string;
+        actionable: boolean;
+        url: string;
+    };
     onboarding: { verified: boolean; steps: OnboardingStep[] };
 }) {
     return (
         <ClientLayout title="Dashboard" description={`Overview for ${organization.name}.`}>
             {!onboarding.verified ? (
-                <Alert tone="warning" title="Business verification pending">
-                    Campaign publishing and wallet funding open once your business documents have been
-                    reviewed.
+                <Alert
+                    tone={verification.status === 'REJECTED' ? 'danger' : 'warning'}
+                    title={`Verification: ${verification.statusLabel}`}
+                >
+                    <p>{verification.description}</p>
+                    {verification.actionable ? (
+                        <Button asChild size="sm" variant="outline" className="mt-3">
+                            <Link href={verification.url}>
+                                Continue verification
+                                <ArrowRight aria-hidden="true" />
+                            </Link>
+                        </Button>
+                    ) : null}
                 </Alert>
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <MetricCard label="Workspace" value={organization.name} />
                 <MetricCard
-                    label="Account status"
-                    value={organization.statusLabel}
-                    badge={
-                        <Badge
-                            tone={onboarding.verified ? 'success' : 'warning'}
-                            icon={
-                                onboarding.verified ? (
-                                    <CheckCircle2 className="size-3" aria-hidden="true" />
-                                ) : (
-                                    <Circle className="size-3" aria-hidden="true" />
-                                )
-                            }
-                        >
-                            {organization.statusLabel}
-                        </Badge>
-                    }
+                    label="Verification"
+                    badge={<StatusBadge status={verification.status} label={verification.statusLabel} />}
                 />
                 <MetricCard label="Currency" value={organization.currency} />
                 <MetricCard
@@ -81,12 +90,20 @@ export default function Dashboard({
                                     />
                                 )}
 
-                                <span className={step.complete ? 'text-muted-foreground line-through' : ''}>
+                                <span
+                                    className={
+                                        step.complete ? 'text-muted-foreground line-through' : undefined
+                                    }
+                                >
                                     {step.label}
                                 </span>
 
                                 {step.complete ? (
                                     <span className="sr-only">Completed</span>
+                                ) : step.available && step.href ? (
+                                    <Button asChild variant="link" size="sm">
+                                        <Link href={step.href}>Start</Link>
+                                    </Button>
                                 ) : !step.available ? (
                                     <Badge tone="neutral">Coming soon</Badge>
                                 ) : null}
@@ -106,9 +123,9 @@ function MetricCard({
     badge,
 }: {
     label: string;
-    value: string;
+    value?: string;
     note?: string;
-    badge?: React.ReactNode;
+    badge?: ReactNode;
 }) {
     return (
         <Card>

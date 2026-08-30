@@ -49,10 +49,21 @@ enum AuditAction: string
     case MembershipCreated = 'tenant.membership.created';
     case MembershipUpdated = 'tenant.membership.updated';
     case MembershipRevoked = 'tenant.membership.revoked';
+    case InvitationSent = 'tenant.invitation.sent';
+    case InvitationResent = 'tenant.invitation.resent';
+    case InvitationAccepted = 'tenant.invitation.accepted';
+    case InvitationRevoked = 'tenant.invitation.revoked';
 
     // Compliance
+    case VerificationSubmitted = 'compliance.verification.submitted';
+    case VerificationClaimed = 'compliance.verification.claimed';
     case ClientVerificationApproved = 'compliance.verification.approved';
     case ClientVerificationRejected = 'compliance.verification.rejected';
+    case VerificationInformationRequested = 'compliance.verification.information_requested';
+    case VerificationSuspended = 'compliance.verification.suspended';
+    case VerificationDocumentUploaded = 'compliance.document.uploaded';
+    case VerificationDocumentDeleted = 'compliance.document.deleted';
+    case VerificationDocumentDownloaded = 'compliance.document.downloaded';
 
     // Security
     case UnauthorizedAccessAttempt = 'security.unauthorized_access';

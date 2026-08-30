@@ -9,8 +9,10 @@ How the platform is put together, and the conventions every module follows.
 ```
 app/
 ├── Domains/            Business logic, one directory per domain
-│   ├── Identity/       Users, roles, permissions, authentication
+│   ├── Identity/       Users, roles, permissions, authentication, invitations
 │   ├── Tenant/         Tenants, organizations, membership, tenant context
+│   ├── Compliance/     Business verification, documents, review decisions
+│   ├── Client/         Private document storage and upload validation
 │   ├── Audit/          Immutable audit trail and secret redaction
 │   ├── System/         Platform settings and feature flags
 │   └── …               Reserved for later phases (see §8)
@@ -132,7 +134,63 @@ $audit->recordChange(AuditAction::OrganizationUpdated, $organization, $before);
 Eloquent syncs a model's originals on save, so an after-the-fact diff would
 report the new value as the old one.
 
-## 6. Money
+## 6. Business verification
+
+A `VerificationProfile` is the organization's single verification record; a
+resubmission updates it rather than creating a second one. `VerificationStatus`
+owns the transition table, and `canTransitionTo()` is the only definition of
+what may follow what — the review action and the tests both read it.
+
+Two separations matter:
+
+- **Declaring and deciding.** A client fills in and submits the declaration;
+  only platform staff holding `clients.verify` decide it. `VerificationProfilePolicy`
+  denies `update` to platform staff and `review` to everyone else, so no
+  combination of client permissions adds up to self-verification.
+- **Internal notes and client messages.** A `VerificationReview` carries both.
+  `internal_note` is `$hidden` on the model and selected explicitly only by the
+  admin controller; `client_message` is what the client sees. A review row is
+  append-only for the same reason an audit row is.
+
+A profile is a draft until submitted, so its declaration columns are nullable —
+but a check constraint (`verification_profiles_complete_when_submitted`) makes
+it impossible for a row to leave `NOT_SUBMITTED` without them. That is a
+database guarantee, not an application convention: no seeder, import or future
+code path can put an incomplete submission into the compliance queue.
+
+## 7. Documents and uploads
+
+`DocumentStorage` (`app/Domains/Client/Services/`) is the only way a file enters
+the platform.
+
+- **Identified by content.** The leading bytes decide the type, and the
+  extension must agree. A PHP script named `licence.pdf` is rejected. RIFF is
+  treated as the container it is, so an AVI cannot pass as a WebP.
+- **Random object paths.** Nothing from the upload contributes to the path, and
+  a crafted filename cannot traverse out of the directory. Nothing relies on
+  paths being unguessable — reads are authorized regardless.
+- **Never public.** Files live on the `documents` disk with private visibility.
+  The single download route authorizes through `VerificationDocumentPolicy` and
+  writes an audit record on every read: who looked at whose identity documents
+  is exactly what an audit trail is for.
+- **Nothing written on rejection.** A failed upload leaves neither a row nor an
+  orphaned object; if the row fails after the bytes land, the bytes are removed.
+
+## 8. Invitations
+
+Only a SHA-256 of the invitation token is stored, so a leaked row cannot be
+redeemed. A token is spent on acceptance and replaced on resend, which
+invalidates a forwarded copy of the earlier email.
+
+`InviteTeamMember` refuses to issue an invitation carrying permissions the
+inviter does not themselves hold — without that, a client admin could invite an
+owner and then sign in as them. `AcceptInvitation` re-validates everything at
+redemption: the state when the email was sent is not evidence of the state now.
+
+`ManageTeamMember` guards the other direction: an organization can never be left
+with nobody able to administer it, and nobody may act on their own membership.
+
+## 9. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -142,7 +200,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 7. Conventions
+## 10. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -166,18 +224,18 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 8. Reserved domains
+## 11. Reserved domains
 
-`Client`, `Agency`, `Advertising`, `AdAccount`, `Creative`, `Wallet`, `Billing`,
-`Payment`, `Analytics`, `Compliance`, `Integration`, `Notification`, `Support`
-exist as empty directories. The structure is declared up front so modules land
+`Agency`, `Advertising`, `AdAccount`, `Creative`, `Wallet`, `Billing`,
+`Payment`, `Analytics`, `Integration`, `Notification`, `Support` exist as empty
+directories. The structure is declared up front so modules land
 in the right place, but nothing is built until its phase.
 
 The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 9. Adding a module
+## 12. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

@@ -2,6 +2,7 @@ import { Link, router } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Badge } from '@/Components/UI/Badge';
+import { StatusBadge } from '@/Components/UI/StatusBadge';
 import { Button } from '@/Components/UI/Button';
 import { Card, CardHeader } from '@/Components/UI/Card';
 import { EmptyState } from '@/Components/UI/EmptyState';
@@ -17,6 +18,8 @@ interface ClientRow {
     tenantType: string;
     status: string;
     statusLabel: string;
+    verificationStatus: string | null;
+    verificationStatusLabel: string | null;
     country: string | null;
     createdAt: string | null;
 }
@@ -26,7 +29,7 @@ export default function ClientsIndex({
     filters,
 }: {
     organizations: Paginated<ClientRow>;
-    filters: { search: string; status: string | null };
+    filters: { search: string; status: string | null; verification: string | null };
 }) {
     const [search, setSearch] = useState(filters.search);
 
@@ -76,6 +79,7 @@ export default function ClientsIndex({
                                     <Th>Organization</Th>
                                     <Th>Tenant</Th>
                                     <Th>Status</Th>
+                                    <Th>Verification</Th>
                                     <Th>Country</Th>
                                     <Th>Registered</Th>
                                 </tr>
@@ -96,13 +100,22 @@ export default function ClientsIndex({
                                             <Badge className="ml-2">{organization.tenantType}</Badge>
                                         </Td>
                                         <Td>
-                                            <Badge
-                                                tone={
-                                                    organization.status === 'ACTIVE' ? 'success' : 'warning'
-                                                }
-                                            >
-                                                {organization.statusLabel}
-                                            </Badge>
+                                            <StatusBadge
+                                                status={organization.status}
+                                                label={organization.statusLabel}
+                                            />
+                                        </Td>
+                                        <Td>
+                                            {organization.verificationStatus ? (
+                                                <StatusBadge
+                                                    status={organization.verificationStatus}
+                                                    label={organization.verificationStatusLabel ?? ''}
+                                                />
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    Not started
+                                                </span>
+                                            )}
                                         </Td>
                                         <Td className="text-muted-foreground">
                                             {organization.country ?? '—'}

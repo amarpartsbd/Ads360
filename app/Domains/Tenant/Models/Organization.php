@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Tenant\Models;
 
+use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Concerns\BelongsToTenant;
 use App\Domains\Tenant\Enums\MembershipStatus;
@@ -13,6 +14,7 @@ use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -30,6 +32,7 @@ class Organization extends Model
 
     /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
+
     use HasPublicId;
     use SoftDeletes;
 
@@ -80,9 +83,31 @@ class Organization extends Model
         return $this->members()->wherePivot('status', MembershipStatus::Active->value);
     }
 
+    /**
+     * The organization's single business verification record (spec §11).
+     *
+     * @return HasOne<VerificationProfile, $this>
+     */
+    public function verificationProfile(): HasOne
+    {
+        return $this->hasOne(VerificationProfile::class);
+    }
+
     public function isOperational(): bool
     {
         return $this->status->isOperational();
+    }
+
+    /**
+     * Whether the business has been verified.
+     *
+     * Reads the organization's own status rather than joining to the profile:
+     * the review action keeps the two in step, so this stays a cheap check on
+     * every request that needs to know.
+     */
+    public function isVerified(): bool
+    {
+        return $this->status === OrganizationStatus::Active;
     }
 
     protected static function newFactory(): OrganizationFactory
