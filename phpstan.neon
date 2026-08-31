@@ -17,12 +17,13 @@ parameters:
     checkModelProperties: true
     checkOctaneCompatibility: false
 
-    ignoreErrors:
-        # Eloquent models expose columns as dynamic properties. Larastan
-        # resolves most of them, but pivot access through a relation is beyond
-        # what static analysis can follow.
-        - identifier: property.notFound
-          path: app/Domains/Tenant/Models/*.php
+    # Every model in this codebase declares its casts in the `casts()` method
+    # (Laravel 11+ style) rather than the legacy `$casts` array. Without this,
+    # Larastan sees none of them: a date column reads as a string, an enum
+    # column as a string, and a jsonb column as a string, which turns most of
+    # the model layer into noise. Reading the method is what makes the analysis
+    # match what the application actually does at runtime.
+    parseModelCastsMethod: true
 
     excludePaths:
         - vendor

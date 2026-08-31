@@ -19,7 +19,7 @@ class AdSetFactory extends Factory
     protected $model = AdSet::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<AdSet>, mixed>
      */
     public function definition(): array
     {

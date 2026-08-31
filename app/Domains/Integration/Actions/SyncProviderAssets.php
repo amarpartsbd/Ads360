@@ -14,6 +14,7 @@ use App\Domains\Identity\Models\User;
 use App\Domains\Integration\Enums\AssetStatus;
 use App\Domains\Integration\Models\ProviderAsset;
 use App\Domains\Integration\Models\ProviderConnection;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -104,7 +105,7 @@ final class SyncProviderAssets
             $model->provider_status = $asset->status;
             $model->metadata = $asset->metadata;
             $model->status = AssetStatus::Available;
-            $model->last_seen_at = Carbon::now();
+            $model->last_seen_at = CarbonImmutable::now();
             $model->unavailable_since = null;
             $model->save();
 

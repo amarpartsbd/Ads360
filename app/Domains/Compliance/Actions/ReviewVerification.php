@@ -80,7 +80,7 @@ final class ReviewVerification
                 'to_status' => $to,
                 'internal_note' => $internalNote,
                 'client_message' => $clientMessage,
-                'referenced_documents' => array_values($referencedDocuments),
+                'referenced_documents' => $referencedDocuments,
             ]);
             $review->tenant_id = $locked->tenant_id;
             $review->save();

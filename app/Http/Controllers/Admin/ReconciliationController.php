@@ -59,7 +59,7 @@ final class ReconciliationController
                     'providerSpendFormatted' => $row->providerSpend()->format(),
                     'ledgerSpendFormatted' => $row->ledgerSpend()->format(),
                     'varianceFormatted' => $row->variance()->format(),
-                    'checkedAt' => $row->checked_at?->toIso8601String(),
+                    'checkedAt' => $row->checked_at->toIso8601String(),
                     'resolutionNote' => $row->resolution_note,
                     'can' => ['resolve' => Gate::allows('resolve', $row)],
                 ],

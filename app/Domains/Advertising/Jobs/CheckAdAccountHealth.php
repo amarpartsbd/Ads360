@@ -24,6 +24,7 @@ final class CheckAdAccountHealth implements ShouldQueue
     /** Provider calls are slow and rate-limited, so this waits its turn. */
     public int $tries = 3;
 
+    /** @var list<int> seconds to wait before each retry */
     public array $backoff = [30, 120, 300];
 
     public function __construct(private readonly int $adAccountId)

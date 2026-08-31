@@ -79,7 +79,7 @@ final class RefundToClient
         /** @var Wallet $wallet */
         $wallet = Wallet::query()->withoutGlobalScopes()->findOrFail($payload['wallet_id']);
 
-        $payment = isset($payload['payment_id']) && $payload['payment_id'] !== null
+        $payment = isset($payload['payment_id'])
             ? Payment::query()->withoutGlobalScopes()->find($payload['payment_id'])
             : null;
 

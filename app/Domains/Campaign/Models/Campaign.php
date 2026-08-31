@@ -45,10 +45,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Campaign extends Model
 {
-    /** @use HasFactory<CampaignFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<CampaignFactory> */
     use HasFactory;
+
     use HasPublicId;
     use SoftDeletes;
 

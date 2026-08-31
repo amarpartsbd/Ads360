@@ -20,7 +20,7 @@ class ProviderAssetFactory extends Factory
     protected $model = ProviderAsset::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<ProviderAsset>, mixed>
      */
     public function definition(): array
     {

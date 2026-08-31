@@ -26,10 +26,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class ProviderAsset extends Model
 {
-    /** @use HasFactory<ProviderAssetFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<ProviderAssetFactory> */
     use HasFactory;
+
     use HasPublicId;
     use SoftDeletes;
 

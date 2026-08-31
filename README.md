@@ -105,7 +105,7 @@ that while working locally, set `ADMIN_REQUIRE_TWO_FACTOR=false` in `.env`.
 composer test        # PHPUnit against PostgreSQL
 composer lint        # Pint, check only
 composer fix         # Pint, apply
-composer analyse     # PHPStan / Larastan
+composer analyse     # PHPStan / Larastan, level 6, clean
 composer check       # lint + analyse + test
 
 npm run dev          # Vite dev server
@@ -114,6 +114,15 @@ npm run types        # TypeScript only
 npm run lint         # ESLint
 npm run format       # Prettier
 ```
+
+Static analysis runs at **PHPStan level 6 with Larastan**, and the tree is clean
+at that level — `composer analyse` reporting anything is a regression, not a
+backlog. Two settings in `phpstan.neon` do most of the work: `parseModelCastsMethod`,
+because every model here declares its casts in the `casts()` method rather than a
+`$casts` array, and `checkModelProperties`, which is what makes a typo in a column
+name an error. Run it through `composer analyse` rather than calling the binary
+directly: the script passes `--autoload-file=phpstan-bootstrap.php`, which that
+file explains.
 
 Tests run against **PostgreSQL**, not SQLite: the schema uses `jsonb` columns and
 partial unique indexes, and the isolation tests are only meaningful against the

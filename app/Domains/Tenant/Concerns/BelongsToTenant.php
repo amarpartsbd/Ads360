@@ -38,6 +38,9 @@ trait BelongsToTenant
         });
     }
 
+    /**
+     * @return BelongsTo<Tenant, $this>
+     */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
@@ -49,6 +52,8 @@ trait BelongsToTenant
      * Reserved for platform administration, reconciliation and reporting. Every
      * call site is a place a reviewer should look at closely, which is why it is
      * spelled out rather than achieved by unsetting context.
+     *
+     * @return Builder<static>
      */
     public static function acrossTenants(): Builder
     {

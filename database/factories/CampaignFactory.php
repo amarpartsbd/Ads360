@@ -23,7 +23,7 @@ class CampaignFactory extends Factory
     protected $model = Campaign::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Campaign>, mixed>
      */
     public function definition(): array
     {
@@ -35,7 +35,7 @@ class CampaignFactory extends Factory
                 ->withoutGlobalScopes()
                 ->whereKey($attributes['organization_id'])
                 ->value('tenant_id'),
-            'name' => $this->faker->catchPhrase().' Campaign',
+            'name' => ucfirst($this->faker->words(3, true)).' Campaign',
             'provider' => Provider::Meta,
             'objective' => CampaignObjective::Traffic,
             'status' => CampaignStatus::Draft,

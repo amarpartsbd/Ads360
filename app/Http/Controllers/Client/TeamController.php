@@ -275,12 +275,11 @@ final class TeamController
      */
     private function assertMemberOf(Organization $organization, User $member, bool $requireActive = true): void
     {
-        $exists = $organization->members()
-            ->where('users.id', $member->getKey())
-            ->when($requireActive, fn ($query) => $query->wherePivot('status', 'ACTIVE'))
-            ->exists();
+        $membership = $requireActive
+            ? $organization->activeMembers()
+            : $organization->members();
 
-        abort_unless($exists, 404);
+        abort_unless($membership->where('users.id', $member->getKey())->exists(), 404);
     }
 
     private function authorizeInvitation(OrganizationInvitation $invitation): void

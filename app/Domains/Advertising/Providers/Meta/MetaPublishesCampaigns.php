@@ -377,18 +377,18 @@ trait MetaPublishesCampaigns
             );
         }
 
-        try {
-            $response = $this->platformClient()->upload(
-                $accountPath.'/adimages',
-                'source',
-                $stream,
-                $draft->creativeChecksum.'.jpg',
-            );
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }
+        /*
+         * Not closed here. Guzzle wraps the handle it is given and closes it
+         * when the request is done, so an fclose() of our own would be a second
+         * close on the same resource; and on the throwing path PHP releases the
+         * handle as soon as this frame goes out of scope.
+         */
+        $response = $this->platformClient()->upload(
+            $accountPath.'/adimages',
+            'source',
+            $stream,
+            $draft->creativeChecksum.'.jpg',
+        );
 
         $images = $response['images'] ?? [];
         $first = is_array($images) ? (reset($images) ?: []) : [];
@@ -496,10 +496,10 @@ trait MetaPublishesCampaigns
 
         if ($targeting->genders !== []) {
             // Meta encodes gender as 1 for male and 2 for female.
-            $spec['genders'] = array_values(array_map(
+            $spec['genders'] = array_map(
                 static fn (string $gender): int => $gender === 'male' ? 1 : 2,
                 $targeting->genders,
-            ));
+            );
         }
 
         if ($targeting->interests !== []) {
@@ -521,10 +521,10 @@ trait MetaPublishesCampaigns
         }
 
         if ($targeting->devices !== []) {
-            $spec['device_platforms'] = array_values(array_map(
+            $spec['device_platforms'] = array_map(
                 static fn (string $device): string => $device === 'desktop' ? 'desktop' : 'mobile',
                 $targeting->devices,
-            ));
+            );
         }
 
         if ($targeting->customAudiences !== []) {

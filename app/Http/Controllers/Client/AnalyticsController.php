@@ -8,6 +8,7 @@ use App\Domains\Analytics\Actions\RequestReportExport;
 use App\Domains\Analytics\Enums\ReportType;
 use App\Domains\Analytics\Models\ReportExport;
 use App\Domains\Analytics\Services\AnalyticsQuery;
+use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Services\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -154,7 +155,7 @@ final class AnalyticsController
      * A currency the organization actually has figures in. Anything else is
      * ignored in favour of their default.
      */
-    private function currencyFor(Request $request, $organization): string
+    private function currencyFor(Request $request, Organization $organization): string
     {
         $requested = strtoupper((string) $request->query('currency', ''));
         $available = $this->analytics->currenciesFor($organization);
@@ -182,7 +183,7 @@ final class AnalyticsController
     /**
      * @return list<array<string, mixed>>
      */
-    private function recentExports($organization): array
+    private function recentExports(Organization $organization): array
     {
         return ReportExport::query()
             ->where('organization_id', $organization->getKey())
@@ -196,7 +197,7 @@ final class AnalyticsController
                 'status' => $export->status->value,
                 'statusLabel' => $export->status->label(),
                 'message' => $export->status->clientMessage(),
-                'period' => $export->period_start?->toDateString().' – '.$export->period_end?->toDateString(),
+                'period' => $export->period_start->toDateString().' – '.$export->period_end->toDateString(),
                 'rows' => $export->row_count,
                 'downloadable' => $export->isDownloadable(),
                 'requestedAt' => $export->created_at?->toIso8601String(),

@@ -39,7 +39,7 @@ final class SecurityController
                     'reason' => $entry->failure_reason,
                     'ipAddress' => $entry->ip_address,
                     'twoFactorUsed' => $entry->two_factor_used,
-                    'at' => $entry->created_at?->toIso8601String(),
+                    'at' => $entry->created_at->toIso8601String(),
                 ])
                 ->all(),
         ]);

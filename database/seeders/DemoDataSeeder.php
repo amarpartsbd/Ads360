@@ -17,6 +17,7 @@ use App\Domains\Tenant\Models\Organization;
 use App\Domains\Tenant\Models\Tenant;
 use App\Domains\Wallet\Services\WalletService;
 use App\Support\Values\Money;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -151,7 +152,7 @@ class DemoDataSeeder extends Seeder
         $profile->organization_id = $organization->getKey();
         $profile->tenant_id = $tenant->getKey();
         $profile->status = VerificationStatus::Pending;
-        $profile->submitted_at = now()->subDays(2);
+        $profile->submitted_at = CarbonImmutable::now()->subDays(2);
         $profile->save();
     }
 

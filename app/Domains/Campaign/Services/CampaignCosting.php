@@ -53,7 +53,7 @@ final class CampaignCosting
      */
     public function storedBreakdown(Campaign $campaign): array
     {
-        if ($campaign->pricing_snapshot === [] || $campaign->pricing_snapshot === null) {
+        if ($campaign->pricing_snapshot === []) {
             return $this->quote($campaign)->toArray();
         }
 

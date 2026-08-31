@@ -27,6 +27,7 @@ final readonly class AgencyReport
 {
     /**
      * @param  Collection<int, AgencyClientSummary>  $clients
+     * @param  list<string>  $currencies  every currency the roster bills in
      */
     public function __construct(
         public Collection $clients,

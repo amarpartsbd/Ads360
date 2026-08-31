@@ -18,7 +18,7 @@ class CampaignDailyMetricFactory extends Factory
     protected $model = CampaignDailyMetric::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<CampaignDailyMetric>, mixed>
      */
     public function definition(): array
     {

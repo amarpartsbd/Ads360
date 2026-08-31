@@ -28,7 +28,7 @@ final class InvitationController
 {
     use PasswordRules;
 
-    public function show(Request $request, string $token): Response|RedirectResponse
+    public function show(Request $request, string $token): Response
     {
         /** @var OrganizationInvitation|null $invitation */
         $invitation = OrganizationInvitation::forToken($token)

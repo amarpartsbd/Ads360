@@ -26,10 +26,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class VerificationProfile extends Model
 {
-    /** @use HasFactory<VerificationProfileFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<VerificationProfileFactory> */
     use HasFactory;
+
     use HasPublicId;
 
     protected $fillable = [

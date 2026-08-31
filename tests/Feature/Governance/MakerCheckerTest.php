@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Governance;
 
+use App\Domains\System\Enums\ApprovableAction;
 use App\Domains\System\Enums\ApprovalStatus;
 use App\Domains\System\Models\ApprovalRequest;
 use App\Domains\System\Services\ApprovalService;
@@ -243,6 +244,43 @@ final class MakerCheckerTest extends TestCase
         $this->expectException(ValidationException::class);
 
         app(ApprovalService::class)->approve($request->fresh(), $other);
+    }
+
+    /**
+     * A campaign approval is decided on the campaign review screen, not in this
+     * queue — there is nothing here that could carry one out. The queue has to
+     * say so rather than fall through an unhandled branch in front of the
+     * approver, which is what it did before.
+     */
+    #[Test]
+    public function an_action_this_queue_cannot_execute_is_approved_and_left_alone(): void
+    {
+        $workspace = $this->createWorkspace();
+        app(TenantContext::class)->for($workspace['tenant'], $workspace['organization']);
+
+        $maker = $this->createPlatformUser('campaign-manager');
+        $checker = $this->createPlatformUser('compliance-admin');
+
+        $request = app(ApprovalService::class)->request(
+            action: ApprovableAction::CampaignApproval,
+            requester: $maker,
+            summary: 'Approve a campaign above the review threshold',
+            payload: ['campaign_id' => 'unused'],
+            amount: Money::of('50000.00', 'BDT'),
+            organization: $workspace['organization'],
+        );
+
+        $this->actingAs($checker)
+            ->post(route('admin.finance.approvals.approve', $request->public_id))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $request->refresh();
+
+        // Approved, not executed: nothing here published anything, and saying
+        // it had would be worse than saying nothing.
+        $this->assertSame(ApprovalStatus::Approved, $request->status);
+        $this->assertNull($request->executed_at);
     }
 
     /**

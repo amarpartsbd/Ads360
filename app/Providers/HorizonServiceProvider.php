@@ -16,7 +16,9 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     {
         parent::boot();
 
-        Horizon::routeSmsNotificationsTo(null);
+        // No SMS, Slack or mail routing is configured: Horizon alerts go to the
+        // people watching the dashboard, and a notification channel this
+        // platform has not set up would fail silently rather than warn anyone.
     }
 
     /**

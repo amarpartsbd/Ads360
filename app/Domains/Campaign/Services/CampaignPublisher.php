@@ -19,7 +19,7 @@ use App\Domains\Campaign\Enums\PublicationOperation;
 use App\Domains\Campaign\Models\Ad;
 use App\Domains\Campaign\Models\AdSet;
 use App\Domains\Campaign\Models\Campaign;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * Sends a campaign to its provider (spec §21, §26, Rule 17).
@@ -147,7 +147,7 @@ final class CampaignPublisher
         $this->ledger->succeed($publication, $result->externalId);
 
         $campaign->provider_campaign_id = $result->externalId;
-        $campaign->published_at = Carbon::now();
+        $campaign->published_at = CarbonImmutable::now();
         $campaign->save();
 
         return $result->externalId;
@@ -215,7 +215,7 @@ final class CampaignPublisher
 
         $adSet->provider_ad_set_id = $result->externalId;
         $adSet->status = AdSetStatus::Active;
-        $adSet->published_at = Carbon::now();
+        $adSet->published_at = CarbonImmutable::now();
         $adSet->last_error = null;
         $adSet->save();
 
@@ -293,7 +293,7 @@ final class CampaignPublisher
 
         $ad->provider_ad_id = $result->externalId;
         $ad->status = AdSetStatus::Active;
-        $ad->published_at = Carbon::now();
+        $ad->published_at = CarbonImmutable::now();
         $ad->last_error = null;
         $ad->save();
     }

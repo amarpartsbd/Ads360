@@ -14,6 +14,7 @@ use App\Domains\Identity\Models\User;
 use App\Domains\Wallet\Models\Wallet;
 use App\Domains\Wallet\Services\WalletService;
 use App\Support\Values\Money;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -72,7 +73,7 @@ final class ApproveCampaign
             $campaign->wallet_reservation_id = $reservation->getKey();
             $campaign->ad_account_id = $account->getKey();
             $campaign->ad_account_pool_id = $account->pools()->first()?->getKey();
-            $campaign->reviewed_at = Carbon::now();
+            $campaign->reviewed_at = CarbonImmutable::now();
             $campaign->reviewed_by = $approver->getKey();
             $campaign->review_notes = $notes;
             $campaign->last_error = null;

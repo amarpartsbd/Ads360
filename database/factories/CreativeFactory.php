@@ -19,7 +19,7 @@ class CreativeFactory extends Factory
     protected $model = Creative::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Creative>, mixed>
      */
     public function definition(): array
     {

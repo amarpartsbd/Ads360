@@ -25,6 +25,7 @@ use App\Domains\Integration\Models\ProviderConnection;
 use App\Domains\Tenant\Models\Organization;
 use App\Domains\Wallet\Models\Wallet;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
@@ -82,7 +83,12 @@ class CampaignSeeder extends Seeder
         } catch (Throwable $exception) {
             // Seeding is a convenience. A workspace missing a connected page or
             // a funded wallet simply gets fewer fixtures, not a failed install.
-            $this->command?->warn('Campaign fixtures skipped: '.$exception->getMessage());
+            //
+            // Logged rather than printed: seeding runs from CI and container
+            // builds as often as from a terminal, and a warning that only
+            // appears when a console command happens to be attached is the one
+            // nobody sees when it matters.
+            Log::warning('Campaign fixtures skipped: '.$exception->getMessage());
         }
     }
 
@@ -113,7 +119,7 @@ class CampaignSeeder extends Seeder
     }
 
     /** An authorised page for ads to run under, connected if there is none. */
-    private function identityFor(Organization $organization): ?ProviderAsset
+    private function identityFor(Organization $organization): ProviderAsset
     {
         $existing = ProviderAsset::query()
             ->withoutGlobalScopes()

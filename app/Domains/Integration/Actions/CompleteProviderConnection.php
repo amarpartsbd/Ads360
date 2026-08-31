@@ -14,7 +14,7 @@ use App\Domains\Audit\Services\AuditRecorder;
 use App\Domains\Identity\Models\User;
 use App\Domains\Integration\Models\ProviderConnection;
 use App\Domains\Tenant\Models\Organization;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -92,7 +92,7 @@ final class CompleteProviderConnection
         $connection->scopes = $credentials->scopes;
         $connection->status = ConnectionStatus::Connected;
         $connection->status_detail = null;
-        $connection->last_verified_at = Carbon::now();
+        $connection->last_verified_at = CarbonImmutable::now();
         $connection->consecutive_failures = 0;
         $connection->last_error = null;
         $connection->connected_by = $actor->getKey();

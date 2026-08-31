@@ -26,7 +26,7 @@ class UserFactory extends Factory
     private static ?string $passwordHash = null;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<User>, mixed>
      */
     public function definition(): array
     {

@@ -75,7 +75,7 @@ class ProviderWebhookEvent extends Model
             'object_type' => $this->object_type,
             'status' => $this->status->value,
             'attempts' => $this->attempts,
-            'received_at' => $this->received_at?->toIso8601String(),
+            'received_at' => $this->received_at->toIso8601String(),
         ];
     }
 }

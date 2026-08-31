@@ -18,7 +18,7 @@ class RecommendationFactory extends Factory
     protected $model = Recommendation::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Recommendation>, mixed>
      */
     public function definition(): array
     {

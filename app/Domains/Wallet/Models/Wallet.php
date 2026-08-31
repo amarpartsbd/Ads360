@@ -31,10 +31,11 @@ use Illuminate\Support\Facades\DB;
  */
 class Wallet extends Model
 {
-    /** @use HasFactory<WalletFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<WalletFactory> */
     use HasFactory;
+
     use HasPublicId;
 
     /**

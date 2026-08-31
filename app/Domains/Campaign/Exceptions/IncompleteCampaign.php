@@ -31,7 +31,7 @@ final class IncompleteCampaign extends RuntimeException
      */
     public static function because(array $reasons): self
     {
-        return new self(array_values($reasons));
+        return new self($reasons);
     }
 
     /**

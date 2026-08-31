@@ -57,8 +57,8 @@ final class AdminDashboardController
                     ->map(fn (AuditLog $log): array => [
                         'id' => $log->public_id,
                         'action' => $log->action,
-                        'actor' => $log->actor?->name ?? $log->actor_label ?? 'System',
-                        'at' => $log->created_at?->toIso8601String(),
+                        'actor' => $log->actor->name ?? $log->actor_label ?? 'System',
+                        'at' => $log->created_at->toIso8601String(),
                     ])
                     ->all()
                 : [],

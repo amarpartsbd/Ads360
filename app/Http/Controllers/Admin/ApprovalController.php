@@ -72,10 +72,10 @@ final class ApprovalController
                 // when something does — today, a high-risk client (§12).
                 'elevation' => $item->elevation_reason,
                 'decisions' => $item->decisions->map(fn (ApprovalDecision $decision): array => [
-                    'approver' => $decision->approver?->name ?? 'Unknown',
+                    'approver' => $decision->approver->name ?? 'Unknown',
                     'decision' => $decision->decision,
                     'note' => $decision->note,
-                    'at' => $decision->created_at?->toIso8601String(),
+                    'at' => $decision->created_at->toIso8601String(),
                 ])->values()->all(),
                 // Whether *this* viewer may vote. The requester never can, and
                 // the interface says so rather than letting them try.
@@ -117,7 +117,13 @@ final class ApprovalController
             );
         }
 
-        $this->execute($decided, $approver);
+        if (! $this->execute($decided, $approver)) {
+            return back()->with(
+                'warning',
+                'Approved, but nothing was carried out here: this action is applied on '
+                .'the screen it was raised from, and the request stays open until it is.',
+            );
+        }
 
         return back()->with('success', 'Approved and executed.');
     }
@@ -143,10 +149,17 @@ final class ApprovalController
     /**
      * Carry out what was approved, from the payload recorded when it was
      * requested — never from anything re-submitted with the approval.
+     *
+     * Returns false when this queue holds no executor for the action, which is
+     * true of a campaign approval: it is carried out on the campaign review
+     * screen, where the reviewer can see the creative, the budget and the
+     * account it will run on. Every arm is named rather than left to a default,
+     * so adding a fifth action is a compile-time decision about who executes it
+     * instead of an unhandled match in front of an approver.
      */
-    private function execute(ApprovalRequest $request, User $executor): void
+    private function execute(ApprovalRequest $request, User $executor): bool
     {
-        match ($request->action_type) {
+        $outcome = match ($request->action_type) {
             ApprovableAction::WalletAdjustment => app(AdjustWallet::class)
                 ->executeApproved($request, $executor),
             ApprovableAction::Refund => app(RefundToClient::class)
@@ -154,6 +167,9 @@ final class ApprovalController
             // Rate changes are recorded and applied by the finance screen; the
             // request is closed so the queue does not hold it open.
             ApprovableAction::ExchangeRateChange => $this->approvals->markExecuted($request),
+            ApprovableAction::CampaignApproval => null,
         };
+
+        return $outcome !== null;
     }
 }

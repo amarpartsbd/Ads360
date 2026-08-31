@@ -126,7 +126,7 @@ trait MetaReadsAssets
             'limit' => 100,
         ]);
 
-        return array_values(array_map(
+        return array_map(
             fn (array $node): DiscoveredAsset => new DiscoveredAsset(
                 type: AssetType::MetaAdAccount,
                 // `act_` prefixed, because that is the form every other Meta
@@ -139,7 +139,7 @@ trait MetaReadsAssets
                 metadata: ['account_status' => $node['account_status'] ?? null],
             ),
             $nodes,
-        ));
+        );
     }
 
     /**
@@ -152,7 +152,7 @@ trait MetaReadsAssets
             'limit' => 100,
         ]);
 
-        return array_values(array_map(
+        return array_map(
             static fn (array $node): DiscoveredAsset => new DiscoveredAsset(
                 type: AssetType::FacebookPage,
                 externalId: (string) ($node['id'] ?? ''),
@@ -166,7 +166,7 @@ trait MetaReadsAssets
                 ],
             ),
             $nodes,
-        ));
+        );
     }
 
     /**
@@ -220,7 +220,7 @@ trait MetaReadsAssets
             ['fields' => 'id,name', 'limit' => 100],
         );
 
-        return array_values(array_map(
+        return array_map(
             static fn (array $node): DiscoveredAsset => new DiscoveredAsset(
                 type: AssetType::MetaPixel,
                 externalId: (string) ($node['id'] ?? ''),
@@ -228,7 +228,7 @@ trait MetaReadsAssets
                 status: 'ACTIVE',
             ),
             $nodes,
-        ));
+        );
     }
 
     /**

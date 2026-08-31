@@ -14,7 +14,7 @@ use App\Domains\Campaign\Exceptions\AllocationFailed;
 use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Models\Organization;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -144,7 +144,7 @@ final class AllocateAdAccount
             }
 
             $locked->committed_amount += $required;
-            $locked->last_allocated_at = Carbon::now();
+            $locked->last_allocated_at = CarbonImmutable::now();
             $locked->save();
 
             return $locked;

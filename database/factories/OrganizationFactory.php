@@ -18,7 +18,7 @@ class OrganizationFactory extends Factory
     protected $model = Organization::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Organization>, mixed>
      */
     public function definition(): array
     {

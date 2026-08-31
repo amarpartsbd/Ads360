@@ -10,7 +10,7 @@ use App\Domains\Advertising\Models\AdAccount;
 use App\Domains\Audit\Enums\AuditAction;
 use App\Domains\Audit\Services\AuditRecorder;
 use App\Domains\Identity\Models\User;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -42,7 +42,7 @@ final class ChangeAdAccountStatus
             $account->status = $status;
 
             if (in_array($status, [AdAccountStatus::Suspended, AdAccountStatus::Retired], true)) {
-                $account->disabled_at = Carbon::now();
+                $account->disabled_at = CarbonImmutable::now();
                 $account->disabled_reason = $reason;
             } elseif ($status === AdAccountStatus::Active) {
                 // Coming back into service clears the record of why it left,

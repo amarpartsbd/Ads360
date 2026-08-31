@@ -17,7 +17,7 @@ class VerificationProfileFactory extends Factory
     protected $model = VerificationProfile::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<VerificationProfile>, mixed>
      */
     public function definition(): array
     {

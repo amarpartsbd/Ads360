@@ -236,7 +236,7 @@ final class WalletController
             'isCredit' => $entry->isCredit(),
             'amount' => $entry->magnitude()->format(),
             'balanceAfter' => Money::ofMinor($entry->balance_snapshot, $entry->currency)->format(),
-            'at' => $entry->created_at?->toIso8601String(),
+            'at' => $entry->created_at->toIso8601String(),
         ];
     }
 

@@ -26,10 +26,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Payment extends Model
 {
-    /** @use HasFactory<PaymentFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<PaymentFactory> */
     use HasFactory;
+
     use HasPublicId;
 
     protected $fillable = [

@@ -24,7 +24,7 @@ final class ClientDashboardController
         $organization = $context->requireOrganization();
         $organization->loadMissing('verificationProfile');
 
-        $verification = $organization->verificationProfile?->status ?? VerificationStatus::NotSubmitted;
+        $verification = $organization->verificationProfile->status ?? VerificationStatus::NotSubmitted;
 
         return Inertia::render('Client/Dashboard', [
             'organization' => [

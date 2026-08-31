@@ -132,7 +132,7 @@ class SpendReconciliation extends Model
     {
         return [
             'id' => $this->public_id,
-            'period' => $this->period_start?->toDateString().' to '.$this->period_end?->toDateString(),
+            'period' => $this->period_start->toDateString().' to '.$this->period_end->toDateString(),
             'provider_spend' => $this->providerSpend()->toDecimal(),
             'ledger_spend' => $this->ledgerSpend()->toDecimal(),
             'variance' => $this->variance()->toDecimal(),

@@ -15,6 +15,7 @@ use App\Domains\Audit\Enums\AuditAction;
 use App\Domains\Audit\Services\AuditRecorder;
 use App\Domains\Identity\Enums\Permission;
 use App\Domains\Identity\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -115,7 +116,7 @@ final class AdAccountHealthService
             // Stamped before the verdict is derived: the account has just been
             // looked at, and deriveHealth() reads this to decide whether the
             // figures are stale.
-            $account->last_synced_at = Carbon::now();
+            $account->last_synced_at = CarbonImmutable::now();
 
             $account->health_status = $this->deriveHealth($account, $state, $billing);
 

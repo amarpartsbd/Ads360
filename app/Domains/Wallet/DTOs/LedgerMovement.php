@@ -37,6 +37,11 @@ final readonly class LedgerMovement
         public ?int $reversesEntryId = null,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>|null  $rateSnapshot
+     * @param  array<string, mixed>|null  $pricingSnapshot
+     */
     public static function credit(
         LedgerEntryType $type,
         Money $amount,
@@ -58,6 +63,11 @@ final readonly class LedgerMovement
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>|null  $rateSnapshot
+     * @param  array<string, mixed>|null  $pricingSnapshot
+     */
     public static function debit(
         LedgerEntryType $type,
         Money $amount,

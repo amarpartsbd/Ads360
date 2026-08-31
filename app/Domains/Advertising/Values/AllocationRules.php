@@ -231,7 +231,7 @@ final class AllocationRules implements JsonSerializable
             return null;
         }
 
-        return array_values(array_map(
+        return array_map(
             static function (string $code) use ($key, $length): string {
                 if (mb_strlen($code) !== $length) {
                     throw new InvalidArgumentException("Allocation rule [{$key}] expects {$length}-letter codes.");
@@ -240,6 +240,6 @@ final class AllocationRules implements JsonSerializable
                 return strtoupper($code);
             },
             $values,
-        ));
+        );
     }
 }

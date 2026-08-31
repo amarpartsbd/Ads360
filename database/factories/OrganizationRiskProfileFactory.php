@@ -17,7 +17,7 @@ class OrganizationRiskProfileFactory extends Factory
     protected $model = OrganizationRiskProfile::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<OrganizationRiskProfile>, mixed>
      */
     public function definition(): array
     {

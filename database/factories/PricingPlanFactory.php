@@ -20,7 +20,7 @@ class PricingPlanFactory extends Factory
     protected $model = PricingPlan::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<PricingPlan>, mixed>
      */
     public function definition(): array
     {

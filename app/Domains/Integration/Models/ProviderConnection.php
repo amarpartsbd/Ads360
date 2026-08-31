@@ -11,8 +11,8 @@ use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Concerns\BelongsToTenant;
 use App\Domains\Tenant\Models\Organization;
 use App\Support\Concerns\HasPublicId;
+use Carbon\CarbonImmutable;
 use Database\Factories\ProviderConnectionFactory;
-use DateTime;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,10 +36,11 @@ use Illuminate\Support\Carbon;
  */
 class ProviderConnection extends Model
 {
-    /** @use HasFactory<ProviderConnectionFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<ProviderConnectionFactory> */
     use HasFactory;
+
     use HasPublicId;
 
     /**
@@ -133,7 +134,7 @@ class ProviderConnection extends Model
         }
 
         $this->expires_at = $credentials->expiresAt !== null
-            ? Carbon::instance(DateTime::createFromImmutable($credentials->expiresAt))
+            ? CarbonImmutable::instance($credentials->expiresAt)
             : null;
     }
 

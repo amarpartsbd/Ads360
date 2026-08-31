@@ -180,6 +180,6 @@ final class PoolEligibilityService
             ->where('currency', strtoupper($currency))
             ->first();
 
-        return $wallet?->available_balance_cached ?? 0;
+        return $wallet->available_balance_cached ?? 0;
     }
 }

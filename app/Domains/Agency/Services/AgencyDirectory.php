@@ -125,11 +125,11 @@ final class AgencyDirectory
             since: $since,
             until: $until,
             totalSpend: $single === null ? null : $this->sum(
-                $clients->map(static fn (AgencyClientSummary $c): ?Money => $c->spend),
+                $clients->map(static fn (AgencyClientSummary $c): ?Money => $c->spend)->all(),
                 $single,
             ),
             totalBalance: $single === null ? null : $this->sum(
-                $clients->map(static fn (AgencyClientSummary $c): ?Money => $c->availableBalance),
+                $clients->map(static fn (AgencyClientSummary $c): Money => $c->availableBalance)->all(),
                 $single,
             ),
             totalImpressions: (int) $clients->sum(static fn (AgencyClientSummary $c): int => $c->impressions ?? 0),
@@ -149,16 +149,19 @@ final class AgencyDirectory
      * null — the total of no spend is no spend, which is a figure an agency
      * can act on.
      *
-     * @param  Collection<int, Money|null>  $amounts
+     * @param  array<int, Money|null>  $amounts
      */
-    private function sum(Collection $amounts, string $currency): Money
+    private function sum(array $amounts, string $currency): Money
     {
-        return $amounts
-            ->filter(static fn (?Money $amount): bool => $amount !== null)
-            ->reduce(
-                static fn (Money $carry, Money $amount): Money => $carry->plus($amount),
-                Money::zero($currency),
-            );
+        $total = Money::zero($currency);
+
+        foreach ($amounts as $amount) {
+            if ($amount !== null) {
+                $total = $total->plus($amount);
+            }
+        }
+
+        return $total;
     }
 
     /**

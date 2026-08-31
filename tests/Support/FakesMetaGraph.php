@@ -66,7 +66,11 @@ trait FakesMetaGraph
         Http::fake($responses);
     }
 
-    /** A Meta error envelope, as the Graph API returns one. */
+    /**
+     * A Meta error envelope, as the Graph API returns one.
+     *
+     * @return array{error: array<string, mixed>}
+     */
     protected function metaError(int $code, string $message, int $subcode = 0): array
     {
         return [

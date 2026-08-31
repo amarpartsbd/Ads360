@@ -70,7 +70,7 @@ class AdInfrastructureSeeder extends Seeder
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return list<array<model-property<AdAccount>, mixed>>
      */
     private function accounts(): array
     {

@@ -90,6 +90,10 @@ final class GooglePublishingTest extends TestCase
         );
     }
 
+    /**
+     * @param  list<string>  $extraHeadlines
+     * @param  list<string>  $extraDescriptions
+     */
     private function adDraft(array $extraHeadlines = [], array $extraDescriptions = []): AdDraft
     {
         return new AdDraft(

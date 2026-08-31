@@ -16,7 +16,7 @@ use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Campaign\Services\CampaignSpendReconciler;
 use App\Domains\Campaign\Services\PublicationLedger;
 use App\Domains\Identity\Models\User;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -72,7 +72,7 @@ final class ControlCampaign
                 $adapter->stopCampaign(
                     $account,
                     (string) $campaign->provider_campaign_id,
-                    $publication?->idempotency_key ?? PublicationOperation::Stop->value,
+                    $publication->idempotency_key ?? PublicationOperation::Stop->value,
                 );
             }
         } catch (ProviderUnavailable $exception) {
@@ -141,7 +141,7 @@ final class ControlCampaign
                 $account,
                 (string) $campaign->provider_campaign_id,
                 $active,
-                $publication?->idempotency_key ?? $operation->value,
+                $publication->idempotency_key ?? $operation->value,
             );
         } catch (ProviderUnavailable $exception) {
             if ($publication !== null) {
@@ -161,7 +161,7 @@ final class ControlCampaign
 
         DB::transaction(function () use ($campaign, $target, $active): void {
             $campaign->status = $target;
-            $campaign->paused_at = $active ? null : Carbon::now();
+            $campaign->paused_at = $active ? null : CarbonImmutable::now();
             $campaign->save();
         });
 

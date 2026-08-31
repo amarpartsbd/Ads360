@@ -102,8 +102,8 @@ class ReportExport extends Model
         return sprintf(
             'ads360-%s-%s-to-%s.csv',
             $this->type->filename(),
-            $this->period_start?->toDateString() ?? 'start',
-            $this->period_end?->toDateString() ?? 'end',
+            $this->period_start->toDateString(),
+            $this->period_end->toDateString(),
         );
     }
 
@@ -128,7 +128,7 @@ class ReportExport extends Model
             'id' => $this->public_id,
             'type' => $this->type->value,
             'status' => $this->status->value,
-            'period' => $this->period_start?->toDateString().' to '.$this->period_end?->toDateString(),
+            'period' => $this->period_start->toDateString().' to '.$this->period_end->toDateString(),
             'rows' => $this->row_count,
         ];
     }

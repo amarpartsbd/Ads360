@@ -20,7 +20,7 @@ class AdFactory extends Factory
     protected $model = Ad::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Ad>, mixed>
      */
     public function definition(): array
     {

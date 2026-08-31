@@ -24,6 +24,7 @@ final class CheckProviderConnection implements ShouldQueue
 
     public int $tries = 3;
 
+    /** @var list<int> seconds to wait before each retry */
     public array $backoff = [60, 300, 900];
 
     public function __construct(private readonly int $connectionId)

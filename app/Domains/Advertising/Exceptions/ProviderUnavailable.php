@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Advertising\Exceptions;
 
 use App\Domains\Advertising\Enums\Provider;
+use App\Domains\Advertising\Enums\ProviderCapability;
 use RuntimeException;
 use Throwable;
 
@@ -83,13 +84,15 @@ class ProviderUnavailable extends RuntimeException
         );
     }
 
-    public static function notSupported(Provider $provider, string $capability): self
+    public static function notSupported(Provider $provider, ProviderCapability|string $capability): self
     {
+        $name = $capability instanceof ProviderCapability ? $capability->value : $capability;
+
         return new self(
             $provider,
             false,
             "{$provider->label()} does not support this yet.",
-            "{$provider->value} does not implement [{$capability}].",
+            "{$provider->value} does not implement [{$name}].",
         );
     }
 }

@@ -38,7 +38,14 @@ use RuntimeException;
  */
 abstract class MockAdvertisingProvider implements AdvertisingProvider
 {
-    /** Failures the test has asked for, keyed by the method they apply to. */
+    /**
+     * Failures the test has asked for, keyed by the method they apply to.
+     *
+     * `true` stands for "report the grant as revoked", which is a refusal
+     * rather than a transport failure and so carries no exception.
+     *
+     * @var array<string, ProviderUnavailable|true>
+     */
     private array $failures = [];
 
     /** @var list<DiscoveredAsset>|null */
@@ -46,7 +53,11 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
 
     private ?ProviderAccountState $accountStateOverride = null;
 
-    /** Identifiers handed out, keyed by the idempotency key that made them. */
+    /**
+     * Identifiers handed out, keyed by the idempotency key that made them.
+     *
+     * @var array<string, string>
+     */
     private array $created = [];
 
     /** @var array<string, string> */

@@ -24,6 +24,7 @@ final class IngestCampaignMetrics implements ShouldQueue
 
     public int $tries = 3;
 
+    /** @var list<int> seconds to wait before each retry */
     public array $backoff = [60, 300];
 
     public function __construct(

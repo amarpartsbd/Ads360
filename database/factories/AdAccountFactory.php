@@ -20,7 +20,7 @@ class AdAccountFactory extends Factory
     protected $model = AdAccount::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<AdAccount>, mixed>
      */
     public function definition(): array
     {

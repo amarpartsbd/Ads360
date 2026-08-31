@@ -27,10 +27,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Creative extends Model
 {
-    /** @use HasFactory<CreativeFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<CreativeFactory> */
     use HasFactory;
+
     use HasPublicId;
     use SoftDeletes;
 

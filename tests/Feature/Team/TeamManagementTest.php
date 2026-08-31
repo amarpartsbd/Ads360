@@ -259,6 +259,48 @@ final class TeamManagementTest extends TestCase
     }
 
     /**
+     * The membership check behind every team action, over HTTP.
+     *
+     * Worth its own test because the check reads the membership *pivot*, and
+     * the two branches — active only, and any standing — are the only place in
+     * this controller where that happens.
+     */
+    #[Test]
+    public function team_actions_check_the_membership_pivot(): void
+    {
+        [$organization, $owner, $member] = $this->teamOfTwo();
+
+        $this->actingAs($owner)
+            ->post(route('client.team.members.suspend', $member->public_id))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('organization_user', [
+            'organization_id' => $organization->getKey(),
+            'user_id' => $member->getKey(),
+            'status' => MembershipStatus::Suspended->value,
+        ]);
+
+        // Suspending again asks the same question of a membership that is no
+        // longer active, so the request is not found rather than repeated.
+        $this->actingAs($owner)
+            ->post(route('client.team.members.suspend', $member->public_id))
+            ->assertNotFound();
+
+        // Reinstating accepts any standing, which is the other branch.
+        $this->actingAs($owner)
+            ->post(route('client.team.members.reinstate', $member->public_id))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('organization_user', [
+            'organization_id' => $organization->getKey(),
+            'user_id' => $member->getKey(),
+            'status' => MembershipStatus::Active->value,
+        ]);
+    }
+
+    /**
      * @return array{0: Organization, 1: User, 2: User}
      */
     private function teamOfTwo(): array

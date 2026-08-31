@@ -149,7 +149,6 @@ final class AuditRecorderTest extends TestCase
             'action' => 'test.event',
         ]);
 
-        $this->assertNotNull($entry->public_id);
         $this->assertSame(26, strlen($entry->public_id));
     }
 }

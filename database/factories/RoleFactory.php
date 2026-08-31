@@ -17,7 +17,7 @@ class RoleFactory extends Factory
     protected $model = Role::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Role>, mixed>
      */
     public function definition(): array
     {

@@ -13,7 +13,7 @@ use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Campaign\Services\CampaignCosting;
 use App\Domains\Campaign\Services\CampaignReadiness;
 use App\Domains\Identity\Models\User;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -56,7 +56,7 @@ final class SubmitCampaign
 
         DB::transaction(function () use ($campaign, $quote, $actor): void {
             $campaign->status = CampaignStatus::PendingReview;
-            $campaign->submitted_at = Carbon::now();
+            $campaign->submitted_at = CarbonImmutable::now();
             $campaign->submitted_by = $actor->getKey();
 
             // Frozen here and read back at approval. Nothing recomputes it.

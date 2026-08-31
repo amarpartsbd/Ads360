@@ -26,6 +26,9 @@ final readonly class ProviderVerification
         public array $raw = [],
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $raw
+     */
     public static function failed(string $reason, array $raw = []): self
     {
         return new self(successful: false, failureReason: $reason, raw: $raw);

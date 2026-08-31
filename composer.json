@@ -68,7 +68,7 @@
             "@php vendor/bin/pint"
         ],
         "analyse": [
-            "@php vendor/bin/phpstan analyse --memory-limit=1G"
+            "@php vendor/bin/phpstan analyse --autoload-file=phpstan-bootstrap.php --memory-limit=1G"
         ],
         "check": [
             "@composer lint",

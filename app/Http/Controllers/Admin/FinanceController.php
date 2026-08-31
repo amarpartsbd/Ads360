@@ -98,9 +98,9 @@ final class FinanceController
                     'amount' => $entry->magnitude()->format(),
                     'balanceAfter' => Money::ofMinor($entry->balance_snapshot, $entry->currency)->format(),
                     'reservedAfter' => Money::ofMinor($entry->reserved_snapshot, $entry->currency)->format(),
-                    'author' => $entry->author?->name ?? 'System',
+                    'author' => $entry->author->name ?? 'System',
                     'group' => $entry->transaction_group_id,
-                    'at' => $entry->created_at?->toIso8601String(),
+                    'at' => $entry->created_at->toIso8601String(),
                 ]),
             'can' => [
                 'adjust' => Gate::allows('adjust', $wallet),
@@ -191,7 +191,7 @@ final class FinanceController
                 'marketRate' => $rate->market_rate,
                 'clientRate' => $rate->client_rate,
                 'markup' => $rate->markupPercentage().'%',
-                'scope' => $rate->tenant?->name ?? 'Platform',
+                'scope' => $rate->tenant->name ?? 'Platform',
                 'effectiveFrom' => $rate->effective_from->toIso8601String(),
                 'effectiveUntil' => $rate->effective_until?->toIso8601String(),
                 'current' => $rate->isCurrent(),
@@ -245,7 +245,7 @@ final class FinanceController
                 'name' => $plan->name,
                 'scope' => $plan->scope->value,
                 'scopeLabel' => $plan->scope->label(),
-                'appliesTo' => $plan->organization?->name ?? $plan->tenant?->name ?? 'All clients',
+                'appliesTo' => $plan->organization->name ?? $plan->tenant->name ?? 'All clients',
                 'currency' => $plan->currency,
                 'isDefault' => $plan->is_default,
                 'isActive' => $plan->is_active,
@@ -278,9 +278,13 @@ final class FinanceController
      */
     private function clientLiability(): array
     {
+        // Dropped to the base query on purpose: these rows are per-currency
+        // totals, not wallets, and hydrating them as models would invite
+        // someone to save one back.
         return Wallet::acrossTenants()
             ->selectRaw('currency, SUM(available_balance_cached + reserved_balance_cached) AS held')
             ->groupBy('currency')
+            ->toBase()
             ->get()
             ->map(fn (object $row): array => [
                 'currency' => (string) $row->currency,

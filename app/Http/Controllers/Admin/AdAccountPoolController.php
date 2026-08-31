@@ -59,7 +59,12 @@ final class AdAccountPoolController
     {
         Gate::authorize('view', $adAccountPool);
 
-        $adAccountPool->loadMissing('accounts');
+        $adAccountPool->loadMissing(['accounts', 'members']);
+
+        // Read from the membership rows rather than the pivot the many-to-many
+        // hands back: the weight belongs to the membership, which this pool
+        // already models in its own right.
+        $weights = $adAccountPool->members->pluck('weight', 'ad_account_id');
 
         return Inertia::render('Admin/AdAccounts/Pools/Show', [
             'pool' => [
@@ -67,7 +72,7 @@ final class AdAccountPoolController
                 'description' => $adAccountPool->description,
                 'rules' => $adAccountPool->allocation_rules,
                 'members' => $adAccountPool->accounts
-                    ->map(function (AdAccount $account) use ($adAccountPool): array {
+                    ->map(function (AdAccount $account) use ($adAccountPool, $weights): array {
                         // The reasons an account is currently unusable are the
                         // whole point of this screen: an empty pool with no
                         // explanation is the failure mode to avoid.
@@ -78,7 +83,7 @@ final class AdAccountPoolController
                             'name' => $account->name,
                             'status' => $account->status->label(),
                             'health' => $account->health_status->label(),
-                            'weight' => (int) $account->pivot->weight,
+                            'weight' => (int) $weights->get($account->getKey(), 1),
                             'utilisation' => $account->dailyUtilisationPercent(),
                             'blockedBy' => $failures,
                         ];

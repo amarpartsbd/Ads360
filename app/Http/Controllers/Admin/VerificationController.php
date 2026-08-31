@@ -155,10 +155,10 @@ final class VerificationController
                     'decisionLabel' => $review->decision->label(),
                     'fromStatus' => $review->from_status->label(),
                     'toStatus' => $review->to_status->label(),
-                    'reviewer' => $review->reviewer?->name ?? 'System',
+                    'reviewer' => $review->reviewer->name ?? 'System',
                     'internalNote' => $review->internal_note,
                     'clientMessage' => $review->client_message,
-                    'at' => $review->created_at?->toIso8601String(),
+                    'at' => $review->created_at->toIso8601String(),
                 ])
                 ->values()
                 ->all(),

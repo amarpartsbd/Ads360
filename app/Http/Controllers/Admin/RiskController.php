@@ -151,7 +151,7 @@ final class RiskController
             'id' => $profile->public_id,
             'organization' => [
                 'id' => $profile->organization?->public_id,
-                'name' => $profile->organization?->name ?? 'Unknown',
+                'name' => $profile->organization->name ?? 'Unknown',
                 'status' => $profile->organization?->status->value,
             ],
             'score' => $profile->score,

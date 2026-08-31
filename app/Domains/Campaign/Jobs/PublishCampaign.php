@@ -34,6 +34,7 @@ final class PublishCampaign implements ShouldQueue
     /** Provider calls fail for boring reasons; the backoff gives them room. */
     public int $tries = 4;
 
+    /** @var list<int> seconds to wait before each retry */
     public array $backoff = [30, 120, 600];
 
     public function __construct(private readonly int $campaignId)

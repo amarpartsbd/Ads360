@@ -16,7 +16,7 @@ class ExchangeRateFactory extends Factory
     protected $model = ExchangeRate::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<ExchangeRate>, mixed>
      */
     public function definition(): array
     {

@@ -34,9 +34,9 @@ use Illuminate\Support\Carbon;
  */
 class CampaignDailyMetric extends Model
 {
-    /** @use HasFactory<CampaignDailyMetricFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<CampaignDailyMetricFactory> */
     use HasFactory;
 
     /** @var list<string> */

@@ -17,7 +17,7 @@ class WalletFactory extends Factory
     protected $model = Wallet::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<Wallet>, mixed>
      */
     public function definition(): array
     {

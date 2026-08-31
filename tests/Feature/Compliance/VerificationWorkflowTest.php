@@ -127,7 +127,7 @@ final class VerificationWorkflowTest extends TestCase
 
         $this->assertSame(VerificationStatus::Verified, $profile->fresh()?->status);
         $this->assertSame(OrganizationStatus::Active, $organization->fresh()?->status);
-        $this->assertTrue($organization->fresh()?->isVerified());
+        $this->assertTrue($organization->fresh()->isVerified());
 
         $this->assertDatabaseHas('audit_logs', [
             'action' => AuditAction::ClientVerificationApproved->value,

@@ -8,6 +8,7 @@ use App\Domains\Campaign\Enums\PublicationOperation;
 use App\Domains\Campaign\Enums\PublicationStatus;
 use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Campaign\Models\CampaignPublication;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -112,6 +113,8 @@ final class PublicationLedger
      * The order matters: an unsettled attempt is resumed in preference to
      * starting a new one, because starting fresh would send a new key for work
      * the provider may already have done.
+     *
+     * @param  array<string, mixed>  $snapshot
      */
     public function claimOrResume(
         Campaign $campaign,
@@ -123,7 +126,7 @@ final class PublicationLedger
 
         if ($inFlight !== null) {
             $inFlight->attempts++;
-            $inFlight->started_at = Carbon::now();
+            $inFlight->started_at = CarbonImmutable::now();
             $inFlight->save();
 
             return $inFlight;
@@ -137,7 +140,7 @@ final class PublicationLedger
         $publication->status = PublicationStatus::Succeeded;
         $publication->provider_reference = $providerReference;
         $publication->last_error = null;
-        $publication->completed_at = Carbon::now();
+        $publication->completed_at = CarbonImmutable::now();
         $publication->save();
 
         return $publication;
@@ -151,7 +154,7 @@ final class PublicationLedger
     {
         $publication->status = PublicationStatus::Failed;
         $publication->last_error = mb_substr($clientSafeMessage, 0, 250);
-        $publication->completed_at = Carbon::now();
+        $publication->completed_at = CarbonImmutable::now();
         $publication->save();
 
         return $publication;

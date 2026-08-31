@@ -292,7 +292,9 @@ trait GooglePublishesCampaigns
                 // It is where the platform's reference lives.
                 'name' => $this->nameFor($draft->name, $draft->reference),
                 'finalUrls' => [$draft->destinationUrl],
-                'responsiveSearchAd' => array_filter([
+                // Both keys are always present: assertCopyIsUsable() has
+                // already refused a draft that cannot fill them.
+                'responsiveSearchAd' => [
                     'headlines' => array_map(
                         static fn (string $text): array => ['text' => $text],
                         $headlines,
@@ -301,7 +303,7 @@ trait GooglePublishesCampaigns
                         static fn (string $text): array => ['text' => $text],
                         $descriptions,
                     ),
-                ], static fn (mixed $value): bool => $value !== null),
+                ],
             ],
         ];
 
@@ -1005,10 +1007,10 @@ trait GooglePublishesCampaigns
             return;
         }
 
-        $wanted = array_values(array_map(
+        $wanted = array_map(
             static fn (string $id): string => str_contains($id, '/') ? $id : "customers/{$customerId}/userLists/{$id}",
             $targeting->customAudiences,
-        ));
+        );
 
         $rows = $this->platformClient()->search(
             $customerId,

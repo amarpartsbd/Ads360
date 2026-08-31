@@ -13,6 +13,7 @@ use App\Domains\Integration\Models\ProviderConnection;
 use App\Domains\Integration\Models\ProviderWebhookEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\Support\FakesMetaGraph;
@@ -221,7 +222,11 @@ final class MetaWebhookTest extends TestCase
         $this->sendSigned(['object' => 'permissions'])->assertOk();
     }
 
-    private function sendSigned(array $payload): \Illuminate\Testing\TestResponse
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return TestResponse<\Illuminate\Http\Response>
+     */
+    private function sendSigned(array $payload): TestResponse
     {
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
 

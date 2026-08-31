@@ -32,7 +32,7 @@ final class AuditLogController
             ->through(fn (AuditLog $log): array => [
                 'id' => $log->public_id,
                 'action' => $log->action,
-                'actor' => $log->actor?->name ?? $log->actor_label ?? 'System',
+                'actor' => $log->actor->name ?? $log->actor_label ?? 'System',
                 'actorType' => $log->actor_type->value,
                 'tenant' => $log->tenant?->name,
                 'organization' => $log->organization?->name,
@@ -40,7 +40,7 @@ final class AuditLogController
                 'resourceId' => $log->resource_id,
                 'ipAddress' => $log->ip_address,
                 'requestId' => $log->request_id,
-                'at' => $log->created_at?->toIso8601String(),
+                'at' => $log->created_at->toIso8601String(),
             ]);
 
         return Inertia::render('Admin/AuditLogs/Index', [

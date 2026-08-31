@@ -26,10 +26,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class AdSet extends Model
 {
-    /** @use HasFactory<AdSetFactory> */
     use BelongsToTenant;
 
+    /** @use HasFactory<AdSetFactory> */
     use HasFactory;
+
     use HasPublicId;
     use SoftDeletes;
 

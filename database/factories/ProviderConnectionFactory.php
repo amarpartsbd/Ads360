@@ -20,7 +20,7 @@ class ProviderConnectionFactory extends Factory
     protected $model = ProviderConnection::class;
 
     /**
-     * @return array<string, mixed>
+     * @return array<model-property<ProviderConnection>, mixed>
      */
     public function definition(): array
     {

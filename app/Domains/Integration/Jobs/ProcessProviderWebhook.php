@@ -11,10 +11,10 @@ use App\Domains\Audit\Services\AuditRecorder;
 use App\Domains\Integration\Enums\WebhookStatus;
 use App\Domains\Integration\Models\ProviderConnection;
 use App\Domains\Integration\Models\ProviderWebhookEvent;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Illuminate\Support\Carbon;
 use Throwable;
 
 /**
@@ -36,6 +36,7 @@ final class ProcessProviderWebhook implements ShouldQueue
 
     public int $tries = 3;
 
+    /** @var list<int> seconds to wait before each retry */
     public array $backoff = [30, 120];
 
     public function __construct(private readonly int $eventId)
@@ -65,7 +66,7 @@ final class ProcessProviderWebhook implements ShouldQueue
             $handled = $this->dispatchByObject($event);
 
             $event->status = $handled ? WebhookStatus::Processed : WebhookStatus::Ignored;
-            $event->processed_at = Carbon::now();
+            $event->processed_at = CarbonImmutable::now();
             $event->last_error = null;
             $event->save();
 

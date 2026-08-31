@@ -27,9 +27,9 @@ final class UpdateUserProfileInformation implements UpdatesUserProfileInformatio
             'timezone' => ['required', 'string', 'timezone'],
         ])->validateWithBag('updateProfileInformation');
 
-        if ($user instanceof User
-            && $input['email'] !== $user->email
-            && $user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail) {
+        // Every user of this platform must verify their address, so changing
+        // it always sends them back through verification.
+        if ($user instanceof User && $input['email'] !== $user->email) {
             $this->updateVerifiedUser($user, $input);
 
             return;

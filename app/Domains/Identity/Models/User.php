@@ -75,7 +75,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_recovery_codes',
     ];
 
-    /** Resolved permission set, memoised per request. */
+    /**
+     * Resolved permission set, memoised per request.
+     *
+     * @var Collection<int, string>|null
+     */
     private ?Collection $permissionCache = null;
 
     private ?int $permissionCacheOrganizationId = null;

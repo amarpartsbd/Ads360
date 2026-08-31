@@ -28,6 +28,9 @@ final class GoogleConnectionTest extends TestCase
     use FakesGoogleAds;
     use RefreshDatabase;
 
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
     private function connection(array $attributes = []): ProviderConnection
     {
         $connection = ProviderConnection::factory()->create([

@@ -53,7 +53,7 @@ final class AuditRecorder
             'actor_label' => $actor?->email,
             // Prefer the actor's own tenant so an action is always attributed to
             // the tenant it affected, even outside a bound request context.
-            'tenant_id' => $organization?->tenant_id ?? $this->context->tenantId() ?? $actor?->tenant_id,
+            'tenant_id' => $organization->tenant_id ?? $this->context->tenantId() ?? $actor?->tenant_id,
             'organization_id' => $organization?->getKey(),
             'action' => $action->value,
             'resource_type' => $resource !== null ? $resource::class : null,

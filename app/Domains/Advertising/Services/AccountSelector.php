@@ -38,7 +38,7 @@ final class AccountSelector
             SelectionStrategy::Weighted => $this->byWeight($pool, $accounts),
         };
 
-        return array_values($ordered);
+        return $ordered;
     }
 
     /**

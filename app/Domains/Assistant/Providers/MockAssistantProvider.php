@@ -75,7 +75,7 @@ final class MockAssistantProvider implements AssistantProvider
              * campaign asking for conversion tracking nobody set up.
              */
             objective: CampaignObjective::Leads,
-            countries: array_values(array_filter([$brief->country])),
+            countries: array_filter([$brief->country]),
             minimumAge: 18,
             maximumAge: 65,
             headlines: [

@@ -100,12 +100,10 @@ class OrganizationRiskProfile extends Model
      */
     public function contributions(): array
     {
-        return array_values(array_filter(array_map(
-            static fn (mixed $row): ?RiskContribution => is_array($row)
-                ? RiskContribution::fromArray($row)
-                : null,
+        return array_values(array_map(
+            static fn (array $row): RiskContribution => RiskContribution::fromArray($row),
             $this->factors ?? [],
-        )));
+        ));
     }
 
     /**

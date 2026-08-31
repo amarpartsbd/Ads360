@@ -17,7 +17,7 @@ use App\Domains\Wallet\Enums\LedgerEntryType;
 use App\Domains\Wallet\Models\WalletReservation;
 use App\Domains\Wallet\Services\WalletService;
 use App\Support\Values\Money;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -138,7 +138,7 @@ final class CampaignSpendReconciler
                 $campaign->status = CampaignStatus::Completed;
             }
 
-            $campaign->completed_at = Carbon::now();
+            $campaign->completed_at = CarbonImmutable::now();
             $campaign->save();
         });
 

@@ -12,7 +12,7 @@ use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Campaign\Notifications\CampaignReviewed;
 use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Models\Organization;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -65,7 +65,7 @@ final class RejectCampaign
 
         DB::transaction(function () use ($campaign, $reviewer, $notes, $outcome): void {
             $campaign->status = $outcome;
-            $campaign->reviewed_at = Carbon::now();
+            $campaign->reviewed_at = CarbonImmutable::now();
             $campaign->reviewed_by = $reviewer->getKey();
             $campaign->review_notes = trim($notes);
             $campaign->save();
