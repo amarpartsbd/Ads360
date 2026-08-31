@@ -51,6 +51,27 @@ printf '    PHP-FPM:       %s\n' "$(systemctl list-units --type=service --state=
 printf '    Other apps:    %s\n' "$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -Ev '^(systemd|dbus|cron|ssh|rsyslog|polkit|networkd|resolved|user@|getty|unattended|snapd|multipathd|udisks|ModemManager|irqbalance|chrony|qemu|serial-getty)' | tr '\n' ' ')"
 echo
 
+# nginx is installed below, and two processes cannot hold port 80. If another
+# web server already has it, installing nginx leaves a server that will not
+# start and a site that may not come back — so this is checked before any
+# package is touched rather than discovered afterwards.
+#
+# Asked of systemd by service name rather than by parsing `ss` output: the
+# question is whether a known web server is running, and a name either matches
+# or it does not. Output parsing would be one more thing that can be wrong in a
+# check whose whole job is to be right before anything is changed.
+for other_server in apache2 httpd caddy lighttpd lshttpd lsws openlitespeed; do
+    if systemctl is-active --quiet "${other_server}" 2>/dev/null; then
+        die "${other_server} is running, and it is almost certainly holding port 80.
+
+    This script serves the application through nginx, and installing nginx while
+    another web server holds port 80 leaves you with one that will not start.
+    Serve ${APP_DOMAIN} through ${other_server} instead, or stop it first.
+
+    Nothing has been changed."
+    fi
+done
+
 # ---------------------------------------------------------------------------
 # Packages
 # ---------------------------------------------------------------------------

@@ -48,7 +48,16 @@ removes nothing it did not create:
   the rules, and the script prints what is currently listening so that decision
   is made with the list in front of you.
 
-It prints what it found running before it changes anything.
+It prints what it found running before it changes anything, and refuses to
+start at all if Apache, LiteSpeed, Caddy or lighttpd is running — installing
+nginx while another web server holds port 80 leaves one that cannot start.
+
+One thing it does change that is worth knowing about: PHP comes from the
+`ondrej/php` PPA, and adding that repository replaces any distribution PHP
+already installed with the same version from that repository. It is the same
+PHP version, built by the maintainer Ubuntu's own packages come from, and
+normally invisible — but it touches the neighbouring application, so check that
+application still works after the first provisioning run.
 
 ## Files
 
