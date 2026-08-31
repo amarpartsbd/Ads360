@@ -34,7 +34,12 @@
 
     <link rel="preconnect" href="https://fonts.bunny.net">
 
-    @routes
+    {{--
+        Nonced because the policy refuses inline scripts outright: Ziggy's route
+        table is the one this page cannot do without, and a blocked one leaves a
+        blank page whose only explanation is in the browser console.
+    --}}
+    @routes(nonce: $cspNonce ?? null)
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
