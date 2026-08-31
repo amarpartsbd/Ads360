@@ -273,14 +273,54 @@ chown -R www-data:www-data /var/www/letsencrypt
 # serving something, and nginx routes by server_name — a vhost for one hostname
 # does not need another hostname's vhost removed to work.
 
+# nginx moved HTTP/2 from a `listen` parameter to its own `http2` directive in
+# 1.25.1. Older nginx does not recognise the directive and refuses to start on
+# it, so the form is chosen from the version actually installed rather than
+# assumed. An unreadable version falls back to the parameter, which the newer
+# nginx still accepts.
+NGINX_VERSION="$(nginx -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+if [[ "$(printf '1.25.1\n%s\n' "${NGINX_VERSION}" | sort -V | head -1)" == "1.25.1" ]]; then
+    LISTEN_TLS='listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;'
+else
+    LISTEN_TLS='listen 443 ssl http2;\n    listen [::]:443 ssl http2;'
+fi
+echo "    nginx ${NGINX_VERSION:-unknown}; HTTP/2 configured accordingly."
+
 render_vhost() {
     sed \
         -e "s|__APP_DOMAIN__|${APP_DOMAIN}|g" \
         -e "s|__APP_DIR__|${APP_DIR}|g" \
         -e "s|__PHP_VERSION__|${PHP_VERSION}|g" \
+        -e "s|__LISTEN_TLS__|${LISTEN_TLS}|" \
         "$1" > /etc/nginx/sites-available/"${APP_DOMAIN}".conf
     ln -sfn /etc/nginx/sites-available/"${APP_DOMAIN}".conf \
             /etc/nginx/sites-enabled/"${APP_DOMAIN}".conf
+}
+
+# `nginx -t && reload` looks like a guard but is not one: under `set -e` a
+# failure on the left of `&&` does not end the script, so a vhost that does not
+# validate would be left enabled and nginx would refuse to start the next time
+# anything restarted it — taking every other site on this box with it.
+install_vhost() {
+    render_vhost "$1"
+
+    if nginx -t; then
+        systemctl reload-or-restart nginx
+        return 0
+    fi
+
+    if [[ -n "${2:-}" ]]; then
+        echo "    That vhost did not validate; putting the previous one back."
+        render_vhost "$2"
+        nginx -t && systemctl reload-or-restart nginx
+    else
+        rm -f /etc/nginx/sites-enabled/"${APP_DOMAIN}".conf
+        nginx -t && systemctl reload-or-restart nginx
+    fi
+
+    die "The vhost rendered from $(basename "$1") did not validate. It has been
+    removed and nginx is running its previous configuration, so nothing else on
+    this server is affected."
 }
 
 CERT_DIR="/etc/letsencrypt/live/${APP_DOMAIN}"
@@ -291,8 +331,7 @@ if [[ ! -d "${CERT_DIR}" ]]; then
     # by the real one below. The committed file stays authoritative either way —
     # nothing here edits a vhost in place.
     say "Bringing up the HTTP-only vhost so ACME can reach this host"
-    render_vhost "${HERE}/nginx/bootstrap.conf"
-    nginx -t && systemctl reload-or-restart nginx
+    install_vhost "${HERE}/nginx/bootstrap.conf"
 
     [[ -n "${CERTBOT_EMAIL}" ]] || die "Set CERTBOT_EMAIL=you@example.com and re-run: certbot needs an address for expiry warnings."
 
@@ -304,8 +343,9 @@ if [[ ! -d "${CERT_DIR}" ]]; then
 fi
 
 say "Installing the TLS vhost"
-render_vhost "${HERE}/nginx/app.conf"
-nginx -t && systemctl reload-or-restart nginx
+# The HTTP-only vhost is the fallback: if the TLS one does not validate, this
+# domain goes back to plain HTTP rather than nginx refusing to start.
+install_vhost "${HERE}/nginx/app.conf" "${HERE}/nginx/bootstrap.conf"
 systemctl enable nginx
 
 # ---------------------------------------------------------------------------
