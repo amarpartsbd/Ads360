@@ -212,6 +212,45 @@ What is implemented today, and what must be true before production.
 - A failed publish keeps its reservation and its ad account, so a client does
   not lose held budget to another campaign before anyone can retry.
 
+### The Meta integration
+
+- The app secret lives only in the environment and is read once into a single
+  object marked sensitive, so it is redacted from stack traces. It never
+  reaches a URL, a log line, or a response.
+- Access tokens are sent as bearer headers, never as query parameters. A test
+  asserts no request URL ever contains the token, because query strings end up
+  in access logs and proxy logs.
+- Failed Graph calls are logged with Meta's trace id, error code and type —
+  never with the request body, which can carry a client's copy.
+- Meta's own error text stays in the log. Clients see plain language, except
+  where Meta marked a message as written for an end user, which is passed
+  through because nothing we could write would be better.
+- A refusal is never retried. Only transport failures and rate limits are, so
+  the platform cannot hammer a policy decision Meta has already made (§27).
+- The adapter refuses to build without its credentials, naming the missing
+  variables. A provider with no live adapter is refused outright rather than
+  falling back to its mock — a mock answering in production would report
+  campaigns as published when nothing had been sent anywhere.
+
+### Webhooks (§52)
+
+- Every delivery is authenticated by an HMAC-SHA256 signature over the **raw**
+  request body, compared in constant time. A missing signature is a rejection,
+  never a pass; without a configured app secret nothing is accepted at all.
+- The subscription handshake echoes Meta's challenge only when the verify token
+  matches, so nobody can point their own Meta app at the endpoint.
+- Rejected deliveries are recorded as security events with the source address.
+- The endpoint is registered outside the `web` group: no session, no CSRF, and
+  no cookie ever reaches it.
+- Deliveries are deduplicated on a digest of the body, so Meta retrying after a
+  timeout cannot cause the same event to be acted on twice.
+- Delivery records cannot be deleted. A webhook is an outside party's assertion
+  about a client's account; if one is ever wrong, the record of exactly what
+  arrived is the only way to establish what happened.
+- **A webhook never moves money.** The signature proves the sender, not the
+  truth of the claim. Spend is drawn from a wallet only by the reconciler,
+  which asks Meta directly and compares against what it has already captured.
+
 ### Creative files
 
 - Stored on a private disk and identified by their leading bytes, not their
@@ -245,7 +284,6 @@ for an oversight:
   local development streams through the authorized controller instead.
 - Client risk scoring (§12) — Phase 9.
 
-- Webhook signature verification (§52) — Phase 5.
 
 - Reconciliation against provider spend (§78) — Phase 6. Wallet-level
   reconciliation exists (`Wallet::isReconciled()`) and is surfaced in the admin
@@ -273,7 +311,7 @@ From specification §98. Do not deploy to production until every line is true.
 [x] KYC files private
 [x] CSRF protections verified
 [x] Rate limits configured
-[ ] Webhook signatures verified               Phase 5
+[x] Webhook signatures verified
 [x] Audit logging enabled
 [x] Production debug disabled                 APP_DEBUG=false
 [x] HTTPS enforced                            forced in production

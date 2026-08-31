@@ -47,6 +47,37 @@ Spend reconciliation runs four times an hour rather than hourly because its
 figures decide what a client is charged, and a campaign spending quickly should
 not run far ahead of what has been drawn from its hold.
 
+## Going live with Meta
+
+The adapter is built against Meta's documented request shapes and is covered by
+tests that fake the Graph API. **Those tests cannot prove Meta agrees.** Only a
+real app with real credentials can, so the first live connection needs a
+deliberate shakedown rather than a silent cutover.
+
+Before switching `ADVERTISING_DRIVER` to `live`:
+
+1. **Meta app.** Create one, add the Marketing API, and complete App Review for
+   `ads_management`, `ads_read`, `business_management`, `pages_show_list`,
+   `pages_read_engagement` and `instagram_basic`. Nothing works in production
+   without review; a development-mode app only serves its own admins.
+2. **Redirect URI.** `META_REDIRECT_URI` must match the value registered in the
+   app exactly, including scheme and trailing path. Meta compares it literally.
+3. **Webhook.** Point the subscription at `https://<host>/webhooks/meta` and set
+   `META_WEBHOOK_VERIFY_TOKEN` to a long random string. The handshake fails
+   closed, so a mismatch shows up immediately at subscription time.
+4. **Shakedown.** Connect one internal account, publish one small campaign
+   against a real ad account, and confirm three things by hand: the campaign
+   appears in Ads Manager with an `[ads360:…]` suffix in its name, a second
+   publish of the same campaign creates nothing new, and the spend the
+   reconciler captures matches what Meta reports.
+5. **Watch the version.** `META_API_VERSION` is pinned. Meta deprecates a
+   version roughly every two years; the upgrade is a deliberate change with its
+   own shakedown, not something to leave to a default.
+
+If a live adapter has to be backed out, set `ADVERTISING_DRIVER=mock` — but note
+that mocks refuse to run in production, so this is a development escape hatch,
+not a production rollback. A production rollback means the previous release.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production

@@ -91,6 +91,9 @@ enum AuditAction: string
     case ProviderConnectionRevoked = 'integration.provider.revoked';
     case ProviderAssetsSynced = 'integration.provider.assets_synced';
     case OAuthStateRejected = 'integration.oauth.state_rejected';
+    case WebhookReceived = 'integration.webhook.received';
+    case WebhookRejected = 'integration.webhook.rejected';
+    case WebhookProcessed = 'integration.webhook.processed';
 
     // Managed ad infrastructure (spec §17, §18, §20)
     case AdAccountCreated = 'ad_account.created';

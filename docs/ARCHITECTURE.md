@@ -416,7 +416,71 @@ the fee due is recomputed from the cumulative figure each time rather than
 accumulated, so rounding cannot drift over a month of hourly syncs. A provider
 that does not report spend leaves the stored figure alone; null is not zero.
 
-## 15. Money
+## 15. The Meta adapter
+
+`app/Domains/Advertising/Providers/Meta/`. The first live provider. Everything
+Meta-specific is here and nowhere else — the vocabulary translation, the field
+names, the three-call ad creation, the fact that Meta measures money in an
+account's own minor units.
+
+### Idempotency without an idempotency key
+
+**Meta's Marketing API has no idempotency-key header.** Sending the same
+campaign creation twice creates two campaigns, each with its own budget, each
+spending the client's money. The key the contract passes therefore cannot
+simply be forwarded, and the adapter earns the guarantee a different way:
+
+1. Every object it creates carries the platform's own reference in its name, as
+   an `[ads360:<reference>]` suffix.
+2. Before creating anything, it lists the parent's recent objects and looks for
+   that reference. A match means a previous attempt succeeded, and the existing
+   object comes back with `wasExisting: true` instead of a second one being made.
+
+That is a real extra round trip on every creation, and a slightly noisier name
+in Meta's own interface. Both are cheaper than charging someone twice. The
+platform's publication ledger stops most duplicates; this check covers the one
+it cannot see — a worker killed between Meta acting and the ledger being written.
+
+### The transport
+
+One client class carries three concerns that would otherwise be scattered:
+
+- **Tokens as headers, never query strings.** Meta accepts `?access_token=` and
+  documents it that way; query strings end up in access logs, proxy logs and
+  exception traces.
+- **One error vocabulary.** Meta's envelope is decoded and mapped once, so
+  callers deal in `ProviderUnavailable` and never in raw codes.
+- **Retries that know what they are retrying.** Only transport failures and
+  rate limits are retried. A refusal returns immediately — retrying a policy
+  decision is what §27 forbids, and it earns a rate limit besides.
+
+The API version is pinned. Meta deprecates a version roughly every two years
+and changes field shapes between them; an unpinned client starts failing on a
+date nobody chose.
+
+### What is deliberately not claimed
+
+`supports(LeadForms)` returns false. Retrieving lead data needs its own
+permission and its own handling of personal data; claiming the capability
+before that exists would have callers offer clients something that does not
+work (§87).
+
+### Webhooks
+
+`routes/webhooks.php`, registered outside the `web` group so these requests
+never pick up session handling or CSRF — a provider has no session, and the
+signature on the body is what authenticates it.
+
+The endpoint verifies, records, queues and acknowledges, and does nothing else.
+Meta retries anything it does not get a prompt 200 for, so real work in the
+request would turn one slow update into a stream of duplicate deliveries.
+
+A webhook is an assertion by an outside party arriving on a public URL. The
+signature proves it came from Meta, not that it is the whole truth — so a
+webhook never moves money. It makes the platform *look sooner*; the reconciler
+asks Meta directly and compares against what it has already captured.
+
+## 16. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -426,7 +490,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 16. Conventions
+## 17. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -450,7 +514,7 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 17. Reserved domains
+## 18. Reserved domains
 
 `Agency`, `Analytics`, `Notification`, `Support` exist as empty directories.
 `Creative` holds the lean library the campaign engine needs; approval workflows
@@ -461,7 +525,7 @@ The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 18. Adding a module
+## 19. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

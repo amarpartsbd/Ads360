@@ -7,6 +7,10 @@ namespace App\Domains\Advertising\Services;
 use App\Domains\Advertising\Contracts\AdvertisingProvider;
 use App\Domains\Advertising\Enums\Provider;
 use App\Domains\Advertising\Enums\ProviderCapability;
+use App\Domains\Advertising\Providers\Meta\MetaAdvertisingProvider;
+use App\Domains\Advertising\Providers\Meta\MetaConfig;
+use App\Domains\Advertising\Providers\Meta\MetaErrorMapper;
+use App\Domains\Advertising\Providers\Meta\MetaGraphClient;
 use App\Domains\Advertising\Providers\MockGoogleAdvertisingProvider;
 use App\Domains\Advertising\Providers\MockMetaAdvertisingProvider;
 use InvalidArgumentException;
@@ -105,9 +109,9 @@ final class ProviderManager
 
         return match ($driver) {
             'mock' => $this->buildMock($provider),
+            'live' => $this->buildLive($provider),
             default => throw new RuntimeException(
-                "Advertising driver [{$driver}] has no adapter for {$provider->value}. "
-                .'Live adapters land with the provider integration phases.'
+                "Advertising driver [{$driver}] is not recognised. Use 'mock' or 'live'."
             ),
         };
     }
@@ -121,5 +125,38 @@ final class ProviderManager
                 "No mock adapter exists for {$provider->value}."
             ),
         };
+    }
+
+    /**
+     * Live adapters.
+     *
+     * A provider with no live adapter yet does *not* silently fall back to its
+     * mock. A mock answering in a live environment would report campaigns as
+     * published when nothing had been sent anywhere, and the failure would only
+     * surface when a client asked why their ads never ran (spec §95).
+     */
+    private function buildLive(Provider $provider): AdvertisingProvider
+    {
+        return match ($provider) {
+            Provider::Meta => $this->buildMeta(),
+            default => throw new RuntimeException(
+                "No live adapter exists for {$provider->value} yet. "
+                .'It is enabled in configuration but not implemented.'
+            ),
+        };
+    }
+
+    private function buildMeta(): AdvertisingProvider
+    {
+        $config = MetaConfig::fromConfig();
+
+        // Fails here, naming the missing variables, rather than later against
+        // Meta with an error nobody can interpret.
+        $config->assertUsable();
+
+        return new MetaAdvertisingProvider(
+            $config,
+            new MetaGraphClient($config, new MetaErrorMapper),
+        );
     }
 }

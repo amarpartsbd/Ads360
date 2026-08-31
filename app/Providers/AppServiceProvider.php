@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domains\Advertising\Providers\Meta\MetaConfig;
 use App\Domains\Advertising\Services\ProviderManager;
 use App\Domains\Tenant\Services\TenantContext;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,11 @@ class AppServiceProvider extends ServiceProvider
         // One registry per request, so an adapter configured in a test is the
         // same instance the code under test resolves.
         $this->app->singleton(ProviderManager::class);
+
+        // Read once. Nothing else should be re-reading credentials out of
+        // configuration, and a single instance keeps the app secret in one
+        // place (spec §64).
+        $this->app->singleton(MetaConfig::class, static fn (): MetaConfig => MetaConfig::fromConfig());
     }
 
     public function boot(): void
