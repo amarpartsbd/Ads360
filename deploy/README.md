@@ -135,6 +135,23 @@ two-factor enrolment, because `ADMIN_REQUIRE_TWO_FACTOR` is on.
 sudo -u ads360 -H bash /var/www/ads360/deploy/deploy.sh
 ```
 
+## Re-running provisioning
+
+`provision.sh` is idempotent and is worth re-running after a change to anything
+in this directory — a vhost, the FPM pool, a systemd unit. Run it from the
+checkout it already installed, not from the `/tmp` clone the first run used:
+`/tmp` does not survive a reboot, and the deployed checkout is the copy that
+matches what is running.
+
+```bash
+cd /var/www/ads360
+sudo -u ads360 -H git fetch origin && sudo -u ads360 -H git reset --hard "origin/$(git rev-parse --abbrev-ref HEAD)"
+bash deploy/provision.sh
+```
+
+It skips the clone, the `.env` and the certificate when it finds them, so a
+re-run only reinstalls the configuration files and the services.
+
 Maintenance mode is on for the window where the code and the schema may
 disagree, and comes back off even if a step fails — a failed deploy should
 leave the previous release serving, not leave the site dark.
