@@ -209,7 +209,9 @@ install -m 644 "${HERE}/php/ads360.ini" "/etc/php/${PHP_VERSION}/cli/conf.d/99-a
 # vhost here routes to it, so it costs a few megabytes; removing it would break
 # anything else on this box that happens to use PHP-FPM.
 systemctl enable "php${PHP_VERSION}-fpm"
-systemctl restart "php${PHP_VERSION}-fpm"
+# Reloaded rather than restarted: PHP-FPM picks up a new pool on SIGUSR2, and a
+# restart would drop whatever any other pool on this version is serving.
+systemctl reload-or-restart "php${PHP_VERSION}-fpm"
 
 # ---------------------------------------------------------------------------
 # Source
