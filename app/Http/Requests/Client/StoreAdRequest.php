@@ -30,6 +30,17 @@ final class StoreAdRequest extends FormRequest
             'headline' => ['required', 'string', 'max:255'],
             'primary_text' => ['required', 'string', 'max:2000'],
             'description' => ['nullable', 'string', 'max:255'],
+
+            /*
+             * Further copy for providers that rotate several headlines in one
+             * ad. The lengths are Google's own limits for a responsive search
+             * ad, enforced here so the client is told while they are looking
+             * at the form rather than by a publish that fails hours later.
+             */
+            'extra_headlines' => ['array', 'max:14'],
+            'extra_headlines.*' => ['required', 'string', 'max:30'],
+            'extra_descriptions' => ['array', 'max:3'],
+            'extra_descriptions.*' => ['required', 'string', 'max:90'],
             'call_to_action' => ['nullable', 'string', 'max:48'],
             // A link the provider will follow, so it has to be a real one.
             'destination_url' => ['required', 'url:http,https', 'max:2048'],

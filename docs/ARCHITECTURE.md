@@ -481,7 +481,111 @@ signature proves it came from Meta, not that it is the whole truth — so a
 webhook never moves money. It makes the platform *look sooner*; the reconciler
 asks Meta directly and compares against what it has already captured.
 
-## 16. Analytics and reconciliation
+## 16. The Google Ads adapter
+
+`app/Domains/Advertising/Providers/Google/`. The second live provider, and the
+one that tests whether `AdvertisingProvider` is a real abstraction or just
+Meta's shape under a different name. Google disagrees with Meta on nearly every
+axis, and every disagreement is absorbed inside this directory.
+
+| Meta                                  | Google Ads                                                       |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Money in the account's minor units    | Money in **micros** — a millionth of a currency unit              |
+| Field lists on an object path         | **GAQL**, a query language, sent to `googleAds:search`            |
+| Numeric object ids                    | **Resource names**, `customers/1/campaigns/2`                     |
+| Budget is a field on the campaign     | Budget is its **own resource** the campaign points at             |
+| Bidding and schedule per ad set       | Bidding and schedule per **campaign**                             |
+| No refresh token; re-exchange itself  | A **real refresh token**, usable without the client present       |
+| Webhooks                              | **No push mechanism at all**                                      |
+| One credential (a user token)         | **Two** — an OAuth token *and* a developer token                  |
+
+### Micros
+
+`Micros` converts between the platform's minor units and Google's micros, and
+the factor depends on the currency: 10,000 micros to a poisha or a cent,
+1,000,000 to a yen. A fixed factor would be right for a two-decimal currency and
+a hundred times wrong for a zero-decimal one, so the currency is always required
+and there is no default. Every conversion is integer arithmetic; no monetary
+value passes through a float (Rule 8, §59).
+
+### Idempotency, granted rather than approximated
+
+Google has no idempotency-key header either — but it enforces name uniqueness
+itself: a campaign name is unique within a customer account, a budget name
+likewise, and an ad group name within a campaign. So a repeated creation is
+*refused by Google* rather than silently duplicated.
+
+The adapter turns that into a guarantee in three steps: it embeds the
+platform's reference in each object's name (the same `[ads360:…]` marker Meta
+uses), looks the reference up before creating, and treats a duplicate-name
+refusal as proof the first attempt landed — going back to the lookup rather
+than failing. Step three is what Meta cannot offer: there, a lost race creates a
+second campaign with a second budget.
+
+Budgets carry the reference too, so a campaign whose creation failed after its
+budget was made resumes onto the same budget rather than leaving an orphan.
+
+### Settings the platform models per ad set and Google models per campaign
+
+Bidding, geography and schedule. The first ad set's choice becomes the
+campaign's; a second ad set asking for a different one is **refused, not applied
+over the top**. Flipping a campaign's bidding because a second audience was
+added would change how the first audience spends, which is a client's money
+moving for a reason nobody asked for.
+
+The resume lookup runs before any of this, so a retry does not meet its own
+earlier work as a conflict.
+
+### What is deliberately not claimed
+
+- **Webhooks and spend limits.** `supports()` returns false for both. Google has
+  no push mechanism, and exposes an account budget only for monthly-invoiced
+  accounts this adapter does not read — reporting a limit it never saw would
+  have the allocation engine decide from a figure that was never true (§20).
+- **Everything but search campaigns.** Display, video, shopping and app
+  campaigns need different ad formats, creative and targeting.
+  `CampaignObjective::for(Provider::Google)` therefore lists traffic, leads and
+  sales, and not awareness or app promotion: offering an objective the adapter
+  cannot publish would let a client build a campaign that fails at approval
+  rather than while they are choosing (§87).
+- **Targeting a search campaign cannot express.** Google offers interest,
+  gender, device and age targeting on search only as *bid adjustments* — they
+  change what is paid, not who sees the ad. An ad set asking for them is
+  refused. Accepting the narrowing and quietly not applying it would spend a
+  client's budget on an audience they explicitly excluded, and neither interface
+  would show that it had happened.
+- **Invented ad copy.** A responsive search ad needs at least three headlines
+  and two descriptions. Copy over Google's character limit is left out rather
+  than cut short, and an ad left short is refused with a message naming the
+  minimum. Repeating a headline to make up the count would put words in a
+  client's mouth that they never approved and cannot see before the ad runs —
+  which is why `Ad` carries `extra_headlines` and `extra_descriptions`, and why
+  the campaign builder asks for them.
+
+### The platform's own grant
+
+A managed ad account has no client grant behind it (§17) and Google
+authenticates every call, so publishing, lifecycle control, insights and
+managed-account health all run as the platform itself. The adapter exchanges
+`GOOGLE_ADS_REFRESH_TOKEN` for an access token and memoises it for the life of
+the adapter — one exchange per request or job. It is deliberately not written
+to the cache: a bearer token in a shared cache is a credential at rest
+somewhere the platform does not encrypt, and one extra HTTP call is a cheap
+price for not putting it there. A missing platform grant is reported by name
+rather than left to arrive as a 401 that explains nothing.
+
+### Two credentials, one manager header
+
+Every request carries an OAuth bearer token (who is asking) and a developer
+token (which application is asking); Google rejects a request missing either.
+`login-customer-id` names the manager account the request acts through, which is
+how managed inventory is reached at all (§17) — and is deliberately *not* sent
+when listing what a user can access, because that is a question about the user.
+A client's own grant acts through their own account rather than the platform's
+manager, since naming ours would have Google refuse a request they are entitled
+to make.
+
+## 17. Analytics and reconciliation
 
 `app/Domains/Analytics/`. Two pipelines that look similar and answer different
 questions: what a client is *shown*, and what a client is *charged*. They are
@@ -552,7 +656,7 @@ client typed, and a spreadsheet evaluates a cell beginning with `=`, `+`, `-`
 or `@`. Quoting protects the file's structure, not the spreadsheet that opens
 it, so such values are prefixed to force them to be read as text.
 
-## 17. Money
+## 18. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -562,7 +666,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 18. Conventions
+## 19. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -586,7 +690,7 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 19. Reserved domains
+## 20. Reserved domains
 
 `Agency`, `Notification`, `Support` exist as empty directories.
 `Creative` holds the lean library the campaign engine needs; approval workflows
@@ -597,7 +701,7 @@ The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 20. Adding a module
+## 21. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

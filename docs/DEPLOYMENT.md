@@ -81,6 +81,74 @@ If a live adapter has to be backed out, set `ADVERTISING_DRIVER=mock` — but no
 that mocks refuse to run in production, so this is a development escape hatch,
 not a production rollback. A production rollback means the previous release.
 
+## Going live with Google Ads
+
+The same caveat as Meta, and one extra. The adapter is built against Google's
+documented request shapes and covered by tests that fake the API. **Those tests
+cannot prove Google agrees**, and two assumptions in particular have never met
+the real API:
+
+- that `LIKE` on `campaign.name` filters the way the idempotency lookup expects,
+  which is what decides whether a second campaign gets created;
+- that a `campaign` query with no date condition returns all-time metrics, which
+  is what the ledger reconciles against.
+
+Both are verified by hand in the shakedown below before any client campaign runs.
+
+Before turning `FEATURE_GOOGLE_ADS` on and switching `ADVERTISING_DRIVER` to
+`live`:
+
+1. **Developer token.** Apply for one against the platform's Google Ads manager
+   account and get it to Basic access at least. A test-account token reaches
+   only test accounts, and a pending one reaches nothing — with an error that
+   names neither. This is separate from OAuth and is the credential people
+   forget.
+2. **OAuth client.** Create a Web application client in Google Cloud, enable the
+   Google Ads API, and register `GOOGLE_ADS_REDIRECT_URI` exactly, including
+   scheme and trailing path. Add the `adwords`, `openid` and `email` scopes to
+   the consent screen and publish it — an app left in testing only serves the
+   accounts listed on it, and its refresh tokens expire after seven days.
+3. **Manager account and the platform's own grant.** Set
+   `GOOGLE_ADS_LOGIN_CUSTOMER_ID` to the manager the platform operates its
+   inventory through — leaving it empty is right only when every account is
+   owned directly by the authenticating user. Then authorise the platform's own
+   Google account through the same consent flow clients use and put the refresh
+   token it returns in `GOOGLE_ADS_REFRESH_TOKEN`. A managed ad account has no
+   client grant behind it and Google authenticates every call, so without this
+   nothing publishes.
+4. **Shakedown.** Connect one internal account, publish one small search
+   campaign against a real customer account, and confirm by hand:
+   - the campaign appears in Google Ads with an `[ads360:…]` suffix in its name,
+     and so does its budget;
+   - a second publish of the same campaign creates nothing new — this is the
+     `LIKE` assumption above;
+   - `campaignInsights` returns a spend figure matching the account's own
+     all-time total — this is the date-filter assumption above;
+   - the spend the reconciler captures matches what Google reports, in minor
+     units rather than a factor of ten thousand out.
+5. **Watch the version.** `GOOGLE_ADS_API_VERSION` is pinned. Google publishes a
+   new version roughly every four months and sunsets each about a year later;
+   the upgrade is a deliberate change with its own shakedown.
+
+### What the Google adapter does not do
+
+Declared through `supports()` and through `CampaignObjective::for()`, so callers
+degrade rather than fail:
+
+| Not supported                                | Why                                                                                  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Webhooks                                      | Google Ads has no push mechanism; state changes are found by polling                  |
+| Account spend limits                          | Exposed only for monthly-invoiced accounts, which the adapter does not read           |
+| Lead forms                                    | Needs its own handling of personal data                                               |
+| Display, video, shopping and app campaigns    | Different ad formats and creative requirements; only search campaigns are published   |
+| Awareness and app-promotion objectives        | Those are display and app campaigns, so they are absent from the Google objective list |
+| Interest, gender, device and age targeting    | Google offers these on search only as bid adjustments, so an ad set asking for them is refused rather than published without them |
+
+A responsive search ad needs at least three headlines and two descriptions.
+The campaign builder collects them ("More headlines", "More descriptions" on the
+ad form); an ad without enough of them is refused at publish time with a message
+naming the minimum, rather than having copy invented to fill the gap.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production

@@ -8,17 +8,20 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 6 complete.** Authentication, tenancy, RBAC, audit logging,
+> **Status: Phase 7 complete.** Authentication, tenancy, RBAC, audit logging,
 > business verification (KYC), team management, the wallet, ledger, pricing,
 > exchange rate, deposit and invoice modules, the advertising provider
-> abstraction with managed ad account inventory, the campaign engine, a live
-> Meta adapter with signed webhooks, and the analytics pipeline with spend
-> reconciliation and report exports are in place and covered by tests.
+> abstraction with managed ad account inventory, the campaign engine, live Meta
+> and Google Ads adapters, and the analytics pipeline with spend reconciliation
+> and report exports are in place and covered by tests.
 >
-> The Meta adapter is tested against a faked Graph API; it has not been run
-> against Meta itself, which needs a reviewed app and real credentials — see
-> [Going live with Meta](docs/DEPLOYMENT.md). The agency module and white-label
-> work are not yet built — see [Roadmap](#roadmap).
+> Both provider adapters are tested against faked APIs; neither has been run
+> against the provider itself, which needs reviewed applications and real
+> credentials — see [Going live with Meta](docs/DEPLOYMENT.md) and
+> [Going live with Google Ads](docs/DEPLOYMENT.md). Google Ads is behind
+> `FEATURE_GOOGLE_ADS` and publishes search campaigns only; what it does not do
+> is listed in the deployment notes. The agency module and white-label work are
+> not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -167,8 +170,8 @@ Phases follow the platform specification.
 | 4     | Campaign builder, approval workflow, allocation, publishing | Complete    |
 | 5     | Meta integration                                            | Complete    |
 | 6     | Analytics pipeline, reporting, reconciliation               | Complete    |
-| 7     | Google Ads                                                  | Next        |
-| 8     | Agency and reseller module                                  | Planned     |
+| 7     | Google Ads                                                  | Complete    |
+| 8     | Agency and reseller module                                  | Next        |
 | 9     | White label, advanced risk, AI assistance, enterprise APIs  | Planned     |
 
 No phase starts until the tenant isolation suite is green, and the
@@ -176,6 +179,13 @@ No phase starts until the tenant isolation suite is green, and the
 one ad account — gates everything that touches money or capacity. Campaign
 publishing is additionally gated on its idempotency suite: a retry must never
 create a second campaign at a provider.
+
+Where a provider enforces that guarantee itself, the platform uses it rather
+than approximating it. Google rejects a second campaign, budget or ad group
+carrying a name already in use, so the adapter embeds the platform's reference
+in each name and treats a duplicate-name refusal as proof the first attempt
+landed. Meta has no such rule, so there the guarantee is earned by a pre-flight
+lookup alone.
 
 ## Provider policy
 

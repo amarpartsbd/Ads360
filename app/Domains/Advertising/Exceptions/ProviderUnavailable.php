@@ -19,7 +19,13 @@ use Throwable;
  */
 class ProviderUnavailable extends RuntimeException
 {
-    private function __construct(
+    /*
+     * Protected rather than private so a provider adapter can add a case of
+     * its own — see the Google adapter's DuplicateResourceName. A subclass
+     * still *is* a ProviderUnavailable, so a caller that has never heard of it
+     * handles it correctly as a non-retryable refusal.
+     */
+    protected function __construct(
         public readonly Provider $provider,
         public readonly bool $retryable,
         public readonly string $clientMessage,

@@ -44,6 +44,8 @@ class Ad extends Model
         'headline',
         'primary_text',
         'description',
+        'extra_headlines',
+        'extra_descriptions',
         'call_to_action',
         'destination_url',
         'metadata',
@@ -56,6 +58,8 @@ class Ad extends Model
     {
         return [
             'status' => AdSetStatus::class,
+            'extra_headlines' => 'array',
+            'extra_descriptions' => 'array',
             'metadata' => 'array',
             'published_at' => 'immutable_datetime',
         ];

@@ -24,6 +24,11 @@ use RuntimeException;
  */
 final class SaveAd
 {
+    /**
+     * @param  list<string>  $extraHeadlines  further headlines for providers
+     *                                        that rotate several in one ad
+     * @param  list<string>  $extraDescriptions
+     */
     public function create(
         AdSet $adSet,
         string $name,
@@ -34,15 +39,21 @@ final class SaveAd
         ?ProviderAsset $identity = null,
         ?string $description = null,
         ?string $callToAction = null,
+        array $extraHeadlines = [],
+        array $extraDescriptions = [],
     ): Ad {
         $campaign = $adSet->campaign;
 
         $this->assertEditable($campaign);
         $this->assertBelongs($campaign, $creative, $identity);
 
+        $extraHeadlines = $this->cleanCopy($extraHeadlines);
+        $extraDescriptions = $this->cleanCopy($extraDescriptions);
+
         return DB::transaction(function () use (
             $adSet, $campaign, $name, $headline, $primaryText, $destinationUrl,
-            $creative, $identity, $description, $callToAction
+            $creative, $identity, $description, $callToAction,
+            $extraHeadlines, $extraDescriptions
         ): Ad {
             $ad = new Ad([
                 'organization_id' => $campaign->organization_id,
@@ -55,6 +66,8 @@ final class SaveAd
                 'headline' => trim($headline),
                 'primary_text' => trim($primaryText),
                 'description' => $description,
+                'extra_headlines' => $extraHeadlines,
+                'extra_descriptions' => $extraDescriptions,
                 'call_to_action' => $callToAction,
                 'destination_url' => trim($destinationUrl),
             ]);
@@ -86,6 +99,12 @@ final class SaveAd
                 'destination_url',
             ])));
 
+            foreach (['extra_headlines', 'extra_descriptions'] as $field) {
+                if (array_key_exists($field, $changes)) {
+                    $ad->{$field} = $this->cleanCopy((array) $changes[$field]);
+                }
+            }
+
             if ($creative !== null) {
                 $ad->creative_id = $creative->getKey();
             }
@@ -105,6 +124,35 @@ final class SaveAd
         $this->assertEditable($ad->campaign);
 
         $ad->delete();
+    }
+
+    /**
+     * Trimmed, de-duplicated, and empties dropped.
+     *
+     * This copy is sent to a provider verbatim, and a blank headline among
+     * three real ones is an ad Google refuses for a reason nobody reading the
+     * form would guess at.
+     *
+     * @param  array<int|string, mixed>  $texts
+     * @return list<string>
+     */
+    private function cleanCopy(array $texts): array
+    {
+        $kept = [];
+
+        foreach ($texts as $text) {
+            if (! is_string($text)) {
+                continue;
+            }
+
+            $trimmed = trim($text);
+
+            if ($trimmed !== '' && ! in_array($trimmed, $kept, true)) {
+                $kept[] = $trimmed;
+            }
+        }
+
+        return $kept;
     }
 
     private function assertEditable(Campaign $campaign): void

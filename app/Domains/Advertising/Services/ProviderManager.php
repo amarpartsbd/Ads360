@@ -7,6 +7,10 @@ namespace App\Domains\Advertising\Services;
 use App\Domains\Advertising\Contracts\AdvertisingProvider;
 use App\Domains\Advertising\Enums\Provider;
 use App\Domains\Advertising\Enums\ProviderCapability;
+use App\Domains\Advertising\Providers\Google\GoogleAdsClient;
+use App\Domains\Advertising\Providers\Google\GoogleAdsConfig;
+use App\Domains\Advertising\Providers\Google\GoogleAdsErrorMapper;
+use App\Domains\Advertising\Providers\Google\GoogleAdsProvider;
 use App\Domains\Advertising\Providers\Meta\MetaAdvertisingProvider;
 use App\Domains\Advertising\Providers\Meta\MetaConfig;
 use App\Domains\Advertising\Providers\Meta\MetaErrorMapper;
@@ -139,6 +143,7 @@ final class ProviderManager
     {
         return match ($provider) {
             Provider::Meta => $this->buildMeta(),
+            Provider::Google => $this->buildGoogle(),
             default => throw new RuntimeException(
                 "No live adapter exists for {$provider->value} yet. "
                 .'It is enabled in configuration but not implemented.'
@@ -157,6 +162,20 @@ final class ProviderManager
         return new MetaAdvertisingProvider(
             $config,
             new MetaGraphClient($config, new MetaErrorMapper),
+        );
+    }
+
+    private function buildGoogle(): AdvertisingProvider
+    {
+        $config = GoogleAdsConfig::fromConfig();
+
+        // Fails here, naming the missing variables, rather than later against
+        // Google with an error nobody can interpret.
+        $config->assertUsable();
+
+        return new GoogleAdsProvider(
+            $config,
+            new GoogleAdsClient($config, new GoogleAdsErrorMapper),
         );
     }
 }

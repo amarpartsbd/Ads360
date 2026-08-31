@@ -19,12 +19,21 @@ final class MockGoogleAdvertisingProvider extends MockAdvertisingProvider
         return Provider::Google;
     }
 
+    /**
+     * The same three noes the live adapter gives, so a caller exercises its
+     * §87 fallbacks in development rather than discovering them in production:
+     * Google Ads has no webhooks, exposes an account spend limit only for
+     * invoiced accounts the adapter does not read, and lead forms are not
+     * implemented.
+     */
     public function supports(ProviderCapability $capability): bool
     {
-        // Google Ads has no webhook equivalent, so status changes are found by
-        // polling. Callers that check this capability take the polling path,
-        // which is exactly the §87 fallback being exercised.
-        return $capability !== ProviderCapability::Webhooks;
+        return match ($capability) {
+            ProviderCapability::Webhooks,
+            ProviderCapability::SpendLimits,
+            ProviderCapability::LeadForms => false,
+            default => true,
+        };
     }
 
     /**

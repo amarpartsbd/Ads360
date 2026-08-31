@@ -77,6 +77,75 @@ return [
         'business_id' => env('META_BUSINESS_ID'),
     ],
 
+    /*
+     * Google Ads API, spec §26.
+     *
+     * Google needs one credential more than Meta: a developer token, issued to
+     * the platform's manager account and separate from OAuth entirely. It is a
+     * secret in the same sense an app secret is and lives only in the
+     * environment. The adapter refuses to build without the four required
+     * values rather than failing later against Google with an error nobody can
+     * interpret.
+     */
+    'google_ads' => [
+        'client_id' => env('GOOGLE_ADS_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_ADS_CLIENT_SECRET'),
+        'developer_token' => env('GOOGLE_ADS_DEVELOPER_TOKEN'),
+
+        /*
+         * Pinned deliberately. Google publishes a new API version roughly
+         * every four months and sunsets each about a year later, changing
+         * field shapes between them; an unpinned client would start failing on
+         * a date nobody chose.
+         */
+        'api_version' => env('GOOGLE_ADS_API_VERSION', 'v21'),
+
+        'api_url' => env('GOOGLE_ADS_API_URL', 'https://googleads.googleapis.com'),
+        'auth_url' => env('GOOGLE_ADS_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth'),
+        'token_url' => env('GOOGLE_ADS_TOKEN_URL', 'https://oauth2.googleapis.com/token'),
+        'user_info_url' => env('GOOGLE_ADS_USER_INFO_URL', 'https://openidconnect.googleapis.com/v1/userinfo'),
+        'redirect_uri' => env('GOOGLE_ADS_REDIRECT_URI'),
+
+        /*
+         * `adwords` is the only advertising scope Google offers, and it is
+         * all-or-nothing. The other two are not advertising scopes at all:
+         * they grant access to no ad account and exist only so the platform
+         * knows which Google account a grant belongs to, which is what makes a
+         * reconnection update the existing connection rather than create a
+         * second one beside it.
+         */
+        'scopes' => [
+            'https://www.googleapis.com/auth/adwords',
+            'openid',
+            'email',
+        ],
+
+        /*
+         * The manager account the platform operates its own inventory through
+         * (spec §17). Google requires it whenever the customer being acted on
+         * is reached through a manager rather than owned by the authenticated
+         * user.
+         */
+        'login_customer_id' => env('GOOGLE_ADS_LOGIN_CUSTOMER_ID'),
+
+        /*
+         * The platform's own grant on its own manager account. Managed ad
+         * accounts have no client grant behind them and Google authenticates
+         * every call, so without this nothing can be published to one.
+         *
+         * Obtained once, by hand, by authorising the platform's own Google
+         * account through the same consent flow clients use.
+         */
+        'refresh_token' => env('GOOGLE_ADS_REFRESH_TOKEN'),
+
+        // Longer than Meta's: a GAQL report over a wide window genuinely takes
+        // longer to come back than a Graph field list.
+        'request_timeout' => (int) env('GOOGLE_ADS_REQUEST_TIMEOUT', 60),
+        'connect_timeout' => (int) env('GOOGLE_ADS_CONNECT_TIMEOUT', 10),
+        'max_attempts' => (int) env('GOOGLE_ADS_MAX_ATTEMPTS', 3),
+        'retry_delay_ms' => (int) env('GOOGLE_ADS_RETRY_DELAY_MS', 500),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

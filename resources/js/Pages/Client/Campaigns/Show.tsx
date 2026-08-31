@@ -31,6 +31,8 @@ interface AdRow {
     id: string;
     name: string;
     headline: string;
+    extraHeadlines: string[];
+    extraDescriptions: string[];
     status: string;
     statusLabel: string;
     statusMessage: string;
@@ -512,6 +514,8 @@ function AddAdForm({
         headline: '',
         primary_text: '',
         description: '',
+        extra_headlines: [] as string[],
+        extra_descriptions: [] as string[],
         call_to_action: 'LEARN_MORE',
         destination_url: '',
         creative: library.creatives[0]?.id ?? '',
@@ -571,6 +575,26 @@ function AddAdForm({
                     />
                 )}
             </Field>
+
+            <CopyList
+                label="More headlines"
+                hint="Search ads rotate several headlines. Google needs at least three in total, each 30 characters or fewer."
+                addLabel="Add a headline"
+                maxLength={30}
+                limit={14}
+                values={data.extra_headlines}
+                onChange={(values) => setData('extra_headlines', values)}
+            />
+
+            <CopyList
+                label="More descriptions"
+                hint="Google needs at least two descriptions in total, each 90 characters or fewer."
+                addLabel="Add a description"
+                maxLength={90}
+                limit={3}
+                values={data.extra_descriptions}
+                onChange={(values) => setData('extra_descriptions', values)}
+            />
 
             <Field label="Where should it link to?" error={errors.destination_url} required>
                 {(field) => (
@@ -644,5 +668,74 @@ function AddAdForm({
                 </Button>
             </div>
         </form>
+    );
+}
+
+/**
+ * A short, repeatable list of ad copy.
+ *
+ * Providers disagree about how many headlines an ad has: one is enough for a
+ * Meta ad, and a Google search ad rotates at least three. Rather than have the
+ * platform invent the difference — words the client never wrote appearing
+ * under their name — the form asks for them, and says whose requirement it is.
+ */
+function CopyList({
+    label,
+    hint,
+    addLabel,
+    maxLength,
+    limit,
+    values,
+    onChange,
+}: {
+    label: string;
+    hint: string;
+    addLabel: string;
+    maxLength: number;
+    limit: number;
+    values: string[];
+    onChange: (values: string[]) => void;
+}) {
+    const update = (index: number, value: string) =>
+        onChange(values.map((existing, position) => (position === index ? value : existing)));
+
+    const remove = (index: number) => onChange(values.filter((_, position) => position !== index));
+
+    return (
+        <div className="sm:col-span-2">
+            <Field label={label} hint={hint}>
+                {(field) => (
+                    <div className="space-y-2">
+                        {values.map((value, index) => (
+                            <div key={index} className="flex gap-2">
+                                <Input
+                                    // Only the first input takes the field's
+                                    // id, so the label points at something.
+                                    {...(index === 0 ? field : {})}
+                                    value={value}
+                                    maxLength={maxLength}
+                                    onChange={(event) => update(index, event.target.value)}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    aria-label={`Remove ${label.toLowerCase()} ${index + 1}`}
+                                    onClick={() => remove(index)}
+                                >
+                                    <Trash2 className="size-4" aria-hidden="true" />
+                                </Button>
+                            </div>
+                        ))}
+
+                        {values.length < limit ? (
+                            <Button type="button" variant="ghost" onClick={() => onChange([...values, ''])}>
+                                <Plus className="size-4" aria-hidden="true" />
+                                {addLabel}
+                            </Button>
+                        ) : null}
+                    </div>
+                )}
+            </Field>
+        </div>
     );
 }

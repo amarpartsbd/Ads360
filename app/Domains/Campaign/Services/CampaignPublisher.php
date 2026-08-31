@@ -261,6 +261,8 @@ final class CampaignPublisher
             openCreative: fn () => $this->creatives->readStream($creative->storage_path),
             description: $ad->description,
             callToAction: $ad->call_to_action,
+            extraHeadlines: array_values($ad->extra_headlines ?? []),
+            extraDescriptions: array_values($ad->extra_descriptions ?? []),
         );
 
         $publication = $this->ledger->claimOrResume(

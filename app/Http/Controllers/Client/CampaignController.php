@@ -239,6 +239,8 @@ final class CampaignController
                 identity: $identity,
                 description: $validated['description'] ?? null,
                 callToAction: $validated['call_to_action'] ?? null,
+                extraHeadlines: array_values($validated['extra_headlines'] ?? []),
+                extraDescriptions: array_values($validated['extra_descriptions'] ?? []),
             );
         } catch (CampaignException $exception) {
             return back()->with('error', $exception->getMessage());
@@ -329,6 +331,8 @@ final class CampaignController
                     'id' => $ad->public_id,
                     'name' => $ad->name,
                     'headline' => $ad->headline,
+                    'extraHeadlines' => $ad->extra_headlines ?? [],
+                    'extraDescriptions' => $ad->extra_descriptions ?? [],
                     'status' => $ad->status->value,
                     'statusLabel' => $ad->status->label(),
                     'statusMessage' => $ad->status->clientMessage(),

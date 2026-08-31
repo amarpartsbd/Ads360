@@ -75,11 +75,23 @@ enum CampaignObjective: string
     {
         return match ($provider) {
             Provider::Meta => self::cases(),
+            /*
+             * What the live Google adapter publishes, which is search
+             * campaigns. Each of these three is a bidding strategy a search
+             * campaign genuinely serves: maximise clicks, maximise
+             * conversions, maximise conversion value.
+             *
+             * Awareness and app promotion are absent because they are not
+             * search campaigns at Google — they are display and app campaigns,
+             * with different ad formats, different creative requirements and
+             * different targeting. Offering them here before those exist would
+             * let a client build a campaign the adapter cannot publish, and
+             * they would find out at approval rather than while choosing
+             * (spec §87). They come back when those campaign types do.
+             */
             Provider::Google => [
-                self::Awareness,
                 self::Traffic,
                 self::Leads,
-                self::AppPromotion,
                 self::Sales,
             ],
             default => [self::Awareness, self::Traffic],

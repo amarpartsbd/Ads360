@@ -31,6 +31,8 @@ class AdFactory extends Factory
             'headline' => $this->faker->sentence(4),
             'primary_text' => $this->faker->paragraph(),
             'description' => $this->faker->sentence(8),
+            'extra_headlines' => [],
+            'extra_descriptions' => [],
             'call_to_action' => 'LEARN_MORE',
             'destination_url' => 'https://example.test/landing',
         ];
@@ -52,6 +54,20 @@ class AdFactory extends Factory
             'campaign_id' => $campaign->getKey(),
             'organization_id' => $campaign->organization_id,
             'tenant_id' => $campaign->tenant_id,
+        ]);
+    }
+
+    /**
+     * Enough copy for a responsive search ad: Google rotates at least three
+     * headlines and two descriptions and refuses an ad carrying fewer.
+     */
+    public function forSearch(): static
+    {
+        return $this->state(fn (): array => [
+            'headline' => 'Fast delivery in Dhaka',
+            'description' => 'Order before six and it arrives tomorrow.',
+            'extra_headlines' => ['Parts for every model', 'Genuine, guaranteed'],
+            'extra_descriptions' => ['Thousands of parts in stock today.'],
         ]);
     }
 
