@@ -22,7 +22,10 @@ DB_USER="${DB_USER:-ads360}"
 PHP_VERSION="${PHP_VERSION:-8.4}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 REPO_URL="${REPO_URL:-git@github.com:amarpartsbd/Ads360.git}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
+# Empty means "whatever the repository's default branch is". Naming a branch
+# here would be a guess about the repository, and cloning a branch that does not
+# exist fails at the one step that is hardest to retry.
+REPO_BRANCH="${REPO_BRANCH:-}"
 # Where Let's Encrypt should send expiry warnings. Required by certbot.
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
@@ -175,7 +178,11 @@ $(cat "${SSH_DIR}/id_ed25519.pub")
 
 EOF
     read -rp "Press Enter once the key is added, or Ctrl-C to stop here. " _
-    sudo -u "${APP_USER}" -H git clone --branch "${REPO_BRANCH}" "${REPO_URL}" "${APP_DIR}/src"
+    if [[ -n "${REPO_BRANCH}" ]]; then
+        sudo -u "${APP_USER}" -H git clone --branch "${REPO_BRANCH}" "${REPO_URL}" "${APP_DIR}/src"
+    else
+        sudo -u "${APP_USER}" -H git clone "${REPO_URL}" "${APP_DIR}/src"
+    fi
     # Cloned into a subdirectory because the home directory already exists;
     # move its contents up so the application root is the repository root.
     shopt -s dotglob

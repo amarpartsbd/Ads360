@@ -67,6 +67,15 @@ cd /tmp/ads360-bootstrap
 CERTBOT_EMAIL=you@banik360.com bash deploy/provision.sh
 ```
 
+Both scripts follow the repository's default branch unless `REPO_BRANCH` says
+otherwise, so nothing here needs editing when the working branch changes. To
+provision from a branch that is not the default:
+
+```bash
+git checkout <branch>
+CERTBOT_EMAIL=you@banik360.com REPO_BRANCH=<branch> bash deploy/provision.sh
+```
+
 It pauses once, to print a public key. Add it to GitHub as a **read-only deploy
 key** (repository → Settings → Deploy keys → Add deploy key), press Enter, and
 it clones into `/var/www/ads360` and finishes.

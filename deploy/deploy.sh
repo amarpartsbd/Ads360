@@ -12,7 +12,6 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/ads360}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
 PHP_VERSION="${PHP_VERSION:-8.4}"
 
 cd "${APP_DIR}"
@@ -21,6 +20,11 @@ say() { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
 
 [[ -f artisan ]] || { echo "No artisan in ${APP_DIR}." >&2; exit 1; }
 [[ -f .env ]] || { echo "No .env in ${APP_DIR}. Run provision.sh first." >&2; exit 1; }
+
+# Read after the cd, and defaults to the branch this checkout is already on, so
+# a deploy redeploys what is deployed. Naming a branch here would be a guess,
+# and the wrong guess is a `git reset --hard` onto somebody else's work.
+REPO_BRANCH="${REPO_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 
 say "Fetching ${REPO_BRANCH}"
 git fetch --prune origin "${REPO_BRANCH}"
