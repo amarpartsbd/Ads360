@@ -102,6 +102,25 @@ enum AuditAction: string
     case AdAccountPoolUpdated = 'ad_account.pool.updated';
     case AdAccountPoolMembershipChanged = 'ad_account.pool.membership_changed';
 
+    // Campaigns (spec §21, §22)
+    case CampaignCreated = 'campaign.created';
+    case CampaignUpdated = 'campaign.updated';
+    case CampaignSubmitted = 'campaign.submitted';
+    case CampaignApproved = 'campaign.approved';
+    case CampaignRejected = 'campaign.rejected';
+    case CampaignChangesRequested = 'campaign.changes_requested';
+    case CampaignPublished = 'campaign.published';
+    case CampaignPublishFailed = 'campaign.publish_failed';
+    case CampaignPaused = 'campaign.paused';
+    case CampaignResumed = 'campaign.resumed';
+    case CampaignCompleted = 'campaign.completed';
+    case CampaignArchived = 'campaign.archived';
+    case CampaignSpendCaptured = 'campaign.spend_captured';
+    case AdAccountAllocated = 'campaign.ad_account_allocated';
+    case CreativeUploaded = 'campaign.creative.uploaded';
+    case CreativeDeleted = 'campaign.creative.deleted';
+    case CreativeDownloaded = 'campaign.creative.downloaded';
+
     // Maker-checker (spec §25)
     case ApprovalRequested = 'governance.approval.requested';
     case ApprovalGranted = 'governance.approval.granted';

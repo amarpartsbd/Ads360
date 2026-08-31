@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdAccountPoolController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\CampaignReviewController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\FinanceController;
@@ -14,7 +15,9 @@ use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Client\AssetController;
+use App\Http\Controllers\Client\CampaignController;
 use App\Http\Controllers\Client\ClientDashboardController;
+use App\Http\Controllers\Client\CreativeController;
 use App\Http\Controllers\Client\OrganizationSettingsController;
 use App\Http\Controllers\Client\OrganizationSwitchController;
 use App\Http\Controllers\Client\ProviderOAuthController;
@@ -23,6 +26,7 @@ use App\Http\Controllers\Client\SimulatedConsentController;
 use App\Http\Controllers\Client\TeamController;
 use App\Http\Controllers\Client\VerificationController;
 use App\Http\Controllers\Client\WalletController;
+use App\Http\Controllers\Shared\CreativeDownloadController;
 use App\Http\Controllers\Shared\PaymentProofDownloadController;
 use App\Http\Controllers\Shared\VerificationDocumentDownloadController;
 use App\Http\Controllers\Shared\WelcomeController;
@@ -117,6 +121,40 @@ Route::middleware(['auth', 'verified', 'tenant'])
         // Where a gateway returns the client after a hosted checkout.
         Route::get('wallet/payments/{payment}/return', [WalletController::class, 'overview'])
             ->name('wallet.payments.return');
+
+        /*
+         * Campaigns (spec §21).
+         *
+         * Building is the client's; approving is not. There is no route here
+         * that changes a campaign's own review outcome.
+         */
+        Route::get('campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+        Route::post('campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+        Route::get('campaigns/{campaign}', [CampaignController::class, 'show'])->name('campaigns.show');
+        Route::put('campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
+        Route::post('campaigns/{campaign}/submit', [CampaignController::class, 'submit'])
+            ->name('campaigns.submit');
+        Route::post('campaigns/{campaign}/pause', [CampaignController::class, 'pause'])
+            ->name('campaigns.pause');
+        Route::post('campaigns/{campaign}/resume', [CampaignController::class, 'resume'])
+            ->name('campaigns.resume');
+
+        Route::post('campaigns/{campaign}/ad-sets', [CampaignController::class, 'storeAdSet'])
+            ->name('campaigns.ad-sets.store');
+        Route::delete('campaigns/{campaign}/ad-sets/{adSet}', [CampaignController::class, 'destroyAdSet'])
+            ->name('campaigns.ad-sets.destroy');
+        Route::post('campaigns/{campaign}/ad-sets/{adSet}/ads', [CampaignController::class, 'storeAd'])
+            ->name('campaigns.ads.store');
+        Route::delete('campaigns/{campaign}/ads/{ad}', [CampaignController::class, 'destroyAd'])
+            ->name('campaigns.ads.destroy');
+
+        // Creative library (spec §23).
+        Route::get('creatives', [CreativeController::class, 'index'])->name('creatives.index');
+        Route::post('creatives', [CreativeController::class, 'store'])->name('creatives.store');
+        Route::delete('creatives/{creative}', [CreativeController::class, 'destroy'])
+            ->name('creatives.destroy');
+        Route::get('creatives/{creative}/download', CreativeDownloadController::class)
+            ->name('creatives.download');
 
         /*
          * Connected advertising assets (spec §15, §16).
@@ -250,6 +288,25 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
             ->name('ad-account-pools.members.store');
         Route::delete('ad-account-pools/{adAccountPool}/members/{adAccount}', [AdAccountPoolController::class, 'removeMember'])
             ->name('ad-account-pools.members.destroy');
+
+        /*
+         * Campaign review (spec §21, §25).
+         *
+         * The approve route is where a client's money is committed, so the
+         * policy behind it refuses a reviewer who submitted the campaign.
+         */
+        Route::get('campaigns', [CampaignReviewController::class, 'index'])->name('campaigns.index');
+        Route::get('campaigns/{campaign}', [CampaignReviewController::class, 'show'])
+            ->name('campaigns.show');
+        Route::post('campaigns/{campaign}/approve', [CampaignReviewController::class, 'approve'])
+            ->name('campaigns.approve');
+        Route::post('campaigns/{campaign}/reject', [CampaignReviewController::class, 'reject'])
+            ->name('campaigns.reject');
+        Route::post('campaigns/{campaign}/pause', [CampaignReviewController::class, 'pause'])
+            ->name('campaigns.pause');
+
+        Route::get('creatives/{creative}/download', CreativeDownloadController::class)
+            ->name('creatives.download');
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
     });

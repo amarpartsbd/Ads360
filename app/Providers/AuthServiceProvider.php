@@ -16,6 +16,10 @@ use App\Domains\Billing\Models\PricingPlan;
 use App\Domains\Billing\Policies\ExchangeRatePolicy;
 use App\Domains\Billing\Policies\InvoicePolicy;
 use App\Domains\Billing\Policies\PricingPlanPolicy;
+use App\Domains\Campaign\Models\Campaign;
+use App\Domains\Campaign\Models\Creative;
+use App\Domains\Campaign\Policies\CampaignPolicy;
+use App\Domains\Campaign\Policies\CreativePolicy;
 use App\Domains\Compliance\Models\VerificationDocument;
 use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Compliance\Policies\VerificationDocumentPolicy;
@@ -66,6 +70,8 @@ class AuthServiceProvider extends ServiceProvider
         ProviderAsset::class => ProviderAssetPolicy::class,
         AdAccount::class => AdAccountPolicy::class,
         AdAccountPool::class => AdAccountPoolPolicy::class,
+        Campaign::class => CampaignPolicy::class,
+        Creative::class => CreativePolicy::class,
     ];
 
     public function boot(): void

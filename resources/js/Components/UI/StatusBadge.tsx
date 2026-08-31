@@ -9,6 +9,7 @@ import {
     HelpCircle,
     Link2Off,
     PauseCircle,
+    Send,
     ShieldOff,
     XCircle,
 } from 'lucide-react';
@@ -75,6 +76,14 @@ const PRESENTATION: Record<string, { tone: Tone; Icon: typeof Circle }> = {
     // Pools
     DRAFT: { tone: 'neutral', Icon: CircleDashed },
     ARCHIVED: { tone: 'neutral', Icon: Circle },
+
+    // Campaigns. PENDING_REVIEW is shared with document review above — both
+    // mean the same thing to a reader: waiting on a person.
+    CHANGES_REQUESTED: { tone: 'warning', Icon: AlertTriangle },
+    APPROVED: { tone: 'success', Icon: CheckCircle2 },
+    PUBLISHING: { tone: 'info', Icon: Send },
+    COMPLETED: { tone: 'neutral', Icon: CheckCircle2 },
+    FAILED: { tone: 'danger', Icon: XCircle },
 };
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

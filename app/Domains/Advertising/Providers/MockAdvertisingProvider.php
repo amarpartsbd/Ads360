@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace App\Domains\Advertising\Providers;
 
 use App\Domains\Advertising\Contracts\AdvertisingProvider;
+use App\Domains\Advertising\DTOs\AdDraft;
+use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\AuthorizationRequest;
+use App\Domains\Advertising\DTOs\CampaignDraft;
+use App\Domains\Advertising\DTOs\CampaignInsights;
 use App\Domains\Advertising\DTOs\DiscoveredAsset;
 use App\Domains\Advertising\DTOs\ProviderAccountState;
 use App\Domains\Advertising\DTOs\ProviderCredentials;
+use App\Domains\Advertising\DTOs\PublishedEntity;
 use App\Domains\Advertising\Enums\Provider;
 use App\Domains\Advertising\Enums\ProviderCapability;
 use App\Domains\Advertising\Exceptions\ProviderUnavailable;
+use App\Domains\Advertising\Models\AdAccount;
 use App\Domains\Integration\Models\ProviderConnection;
 use DateTimeImmutable;
 use Illuminate\Support\Str;
@@ -38,6 +44,14 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     private ?array $assetOverride = null;
 
     private ?ProviderAccountState $accountStateOverride = null;
+
+    /** Identifiers handed out, keyed by the idempotency key that made them. */
+    private array $created = [];
+
+    /** @var array<string, string> */
+    private array $campaignStates = [];
+
+    private ?CampaignInsights $insightsOverride = null;
 
     public function __construct()
     {
@@ -149,6 +163,119 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     }
 
     // ------------------------------------------------------------------
+    // Publishing
+    // ------------------------------------------------------------------
+
+    public function createCampaign(
+        AdAccount $account,
+        CampaignDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity {
+        $this->failIfAsked(__FUNCTION__);
+
+        return $this->createOnce('campaign', $idempotencyKey);
+    }
+
+    public function createAdSet(
+        AdAccount $account,
+        AdSetDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity {
+        $this->failIfAsked(__FUNCTION__);
+
+        return $this->createOnce('adset', $idempotencyKey);
+    }
+
+    public function createAd(
+        AdAccount $account,
+        AdDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity {
+        $this->failIfAsked(__FUNCTION__);
+
+        // Reads the creative if one was supplied, so a test that forgets to
+        // make the bytes reachable fails here rather than in production.
+        $stream = $draft->creativeStream();
+
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+
+        return $this->createOnce('ad', $idempotencyKey);
+    }
+
+    public function setCampaignActive(
+        AdAccount $account,
+        string $externalCampaignId,
+        bool $active,
+        string $idempotencyKey,
+    ): void {
+        $this->failIfAsked(__FUNCTION__);
+
+        $this->campaignStates[$externalCampaignId] = $active ? 'ACTIVE' : 'PAUSED';
+    }
+
+    public function stopCampaign(
+        AdAccount $account,
+        string $externalCampaignId,
+        string $idempotencyKey,
+    ): void {
+        $this->failIfAsked(__FUNCTION__);
+
+        $this->campaignStates[$externalCampaignId] = 'STOPPED';
+    }
+
+    public function campaignInsights(AdAccount $account, string $externalCampaignId): CampaignInsights
+    {
+        $this->failIfAsked(__FUNCTION__);
+
+        if ($this->insightsOverride !== null) {
+            return $this->insightsOverride;
+        }
+
+        return new CampaignInsights(
+            externalCampaignId: $externalCampaignId,
+            spendMinor: 0,
+            currency: $account->currency,
+            impressions: 0,
+            clicks: 0,
+            status: $this->campaignStates[$externalCampaignId] ?? 'ACTIVE',
+            raw: ['mock' => true],
+        );
+    }
+
+    /**
+     * Honours the idempotency key the way a real provider is expected to: the
+     * first request with a given key creates something, and every repeat gets
+     * back the same identifier marked as pre-existing.
+     *
+     * The mock behaving correctly here is what lets the publishing pipeline's
+     * own protections be tested against something other than a stub that
+     * always says yes.
+     */
+    private function createOnce(string $kind, string $idempotencyKey): PublishedEntity
+    {
+        if (isset($this->created[$idempotencyKey])) {
+            return new PublishedEntity(
+                externalId: $this->created[$idempotencyKey],
+                status: 'ACTIVE',
+                wasExisting: true,
+                raw: ['mock' => true, 'idempotent_replay' => true],
+            );
+        }
+
+        $externalId = sprintf('mock-%s-%s', $kind, Str::lower(Str::random(16)));
+        $this->created[$idempotencyKey] = $externalId;
+
+        return new PublishedEntity(
+            externalId: $externalId,
+            status: 'ACTIVE',
+            wasExisting: false,
+            raw: ['mock' => true],
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Test hooks
     // ------------------------------------------------------------------
 
@@ -159,6 +286,12 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     public function willFail(string $method, ProviderUnavailable $exception): void
     {
         $this->failures[$method] = $exception;
+    }
+
+    /** Stop a method failing, so a test can let a provider recover. */
+    public function willSucceed(string $method): void
+    {
+        unset($this->failures[$method]);
     }
 
     /** Make verifyConnection() report the grant as gone. */
@@ -179,6 +312,24 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     public function willReportAccountState(ProviderAccountState $state): void
     {
         $this->accountStateOverride = $state;
+    }
+
+    /** Make the provider report particular figures for every campaign. */
+    public function willReportInsights(CampaignInsights $insights): void
+    {
+        $this->insightsOverride = $insights;
+    }
+
+    /** What the provider currently thinks a published campaign's state is. */
+    public function campaignState(string $externalCampaignId): ?string
+    {
+        return $this->campaignStates[$externalCampaignId] ?? null;
+    }
+
+    /** How many distinct entities this adapter has been asked to create. */
+    public function creationCount(): int
+    {
+        return count($this->created);
     }
 
     private function failIfAsked(string $method): void

@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Contracts;
 
+use App\Domains\Advertising\DTOs\AdDraft;
+use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\AuthorizationRequest;
+use App\Domains\Advertising\DTOs\CampaignDraft;
+use App\Domains\Advertising\DTOs\CampaignInsights;
 use App\Domains\Advertising\DTOs\DiscoveredAsset;
 use App\Domains\Advertising\DTOs\ProviderAccountState;
 use App\Domains\Advertising\DTOs\ProviderCredentials;
+use App\Domains\Advertising\DTOs\PublishedEntity;
 use App\Domains\Advertising\Enums\Provider;
 use App\Domains\Advertising\Enums\ProviderCapability;
 use App\Domains\Advertising\Exceptions\ProviderUnavailable;
+use App\Domains\Advertising\Models\AdAccount;
 use App\Domains\Integration\Models\ProviderConnection;
 
 /**
@@ -31,8 +37,10 @@ use App\Domains\Integration\Models\ProviderConnection;
  * refuses something, the adapter surfaces the refusal rather than retrying it
  * differently.
  *
- * Campaign publishing methods arrive with Phase 4; this interface covers what
- * the advertising foundation needs.
+ * Every publishing method takes an idempotency key. Adapters must pass it to
+ * the provider so a repeated request is recognised as the same intent rather
+ * than acted on twice — creating a campaign twice means spending a client's
+ * budget twice (Rule 17).
  */
 interface AdvertisingProvider
 {
@@ -96,4 +104,73 @@ interface AdvertisingProvider
      * @throws ProviderUnavailable
      */
     public function accountState(string $externalAccountId, ?ProviderConnection $connection = null): ProviderAccountState;
+
+    /**
+     * Create a campaign at the provider (spec §21, §26).
+     *
+     * The key must reach the provider. An adapter that drops it turns a
+     * network timeout into a duplicate campaign, because the platform cannot
+     * tell whether the first request landed.
+     *
+     * @throws ProviderUnavailable
+     */
+    public function createCampaign(
+        AdAccount $account,
+        CampaignDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity;
+
+    /**
+     * @throws ProviderUnavailable
+     */
+    public function createAdSet(
+        AdAccount $account,
+        AdSetDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity;
+
+    /**
+     * @throws ProviderUnavailable
+     */
+    public function createAd(
+        AdAccount $account,
+        AdDraft $draft,
+        string $idempotencyKey,
+    ): PublishedEntity;
+
+    /**
+     * Pause or resume a published campaign (spec §21).
+     *
+     * Repeats are harmless by design: asking to pause something already paused
+     * is a no-op, so a retry costs nothing.
+     *
+     * @throws ProviderUnavailable
+     */
+    public function setCampaignActive(
+        AdAccount $account,
+        string $externalCampaignId,
+        bool $active,
+        string $idempotencyKey,
+    ): void;
+
+    /**
+     * Stop a campaign for good.
+     *
+     * Separate from pausing because it is not reversible at most providers,
+     * and the platform should not pretend otherwise.
+     *
+     * @throws ProviderUnavailable
+     */
+    public function stopCampaign(
+        AdAccount $account,
+        string $externalCampaignId,
+        string $idempotencyKey,
+    ): void;
+
+    /**
+     * What the provider reports about a running campaign (spec §78).
+     *
+     * @throws ProviderUnavailable
+     */
+    public function campaignInsights(AdAccount $account, string $externalCampaignId): CampaignInsights;
 }

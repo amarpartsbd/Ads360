@@ -18,6 +18,7 @@ enum ApprovableAction: string
     case WalletAdjustment = 'WALLET_ADJUSTMENT';
     case Refund = 'REFUND';
     case ExchangeRateChange = 'EXCHANGE_RATE_CHANGE';
+    case CampaignApproval = 'CAMPAIGN_APPROVAL';
 
     public function label(): string
     {
@@ -25,6 +26,7 @@ enum ApprovableAction: string
             self::WalletAdjustment => 'Wallet adjustment',
             self::Refund => 'Refund',
             self::ExchangeRateChange => 'Exchange rate change',
+            self::CampaignApproval => 'Campaign approval',
         };
     }
 
@@ -35,6 +37,7 @@ enum ApprovableAction: string
             self::WalletAdjustment => Permission::WalletAdjust,
             self::Refund => Permission::WalletRefund,
             self::ExchangeRateChange => Permission::ExchangeRatesManage,
+            self::CampaignApproval => Permission::CampaignsApprove,
         };
     }
 
@@ -48,6 +51,7 @@ enum ApprovableAction: string
             self::WalletAdjustment => (int) config('platform.finance.maker_checker.wallet_adjustment_minor'),
             self::Refund => (int) config('platform.finance.maker_checker.refund_minor'),
             self::ExchangeRateChange => null,
+            self::CampaignApproval => (int) config('platform.finance.maker_checker.campaign_budget_minor'),
         };
     }
 

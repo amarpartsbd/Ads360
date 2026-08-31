@@ -35,6 +35,13 @@ final class InvalidLedgerOperation extends DomainException
         return new self("Reservation [{$publicId}] is closed and cannot be drawn against.");
     }
 
+    public static function notCapturable(string $type): self
+    {
+        return new self(
+            "Ledger entries of type [{$type}] cannot be drawn from a reservation."
+        );
+    }
+
     public static function exceedsReservation(string $publicId): self
     {
         return new self("That would draw more than reservation [{$publicId}] is holding.");

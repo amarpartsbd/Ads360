@@ -37,10 +37,15 @@ delays its own checks and nothing else.
 | --- | --- | --- |
 | `ads:check-connections` | Hourly | Verifies each live client grant, refreshing tokens a day ahead of expiry and warning the client when it cannot |
 | `ads:check-ad-accounts` | Hourly | Asks each provider about the managed accounts in service, updating spend mirrors, billing standing and health |
+| `ads:sync-campaign-spend` | Every 15 minutes | Reconciles what each running campaign has spent against its wallet hold, and finishes campaigns whose run is over |
 
-Both are `withoutOverlapping()` and `onOneServer()`. The `providers` queue is
-served by the `campaigns` Horizon supervisor; a deployment that adds queue nodes
-must include it.
+All three are `withoutOverlapping()` and `onOneServer()`. The `providers`,
+`campaign_publish` and `campaign_sync` queues are served by the `campaigns`
+Horizon supervisor; a deployment that adds queue nodes must include it.
+
+Spend reconciliation runs four times an hour rather than hourly because its
+figures decide what a client is charged, and a campaign spending quickly should
+not run far ahead of what has been drawn from its hold.
 
 ## Environments
 

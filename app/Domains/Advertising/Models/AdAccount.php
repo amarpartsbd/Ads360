@@ -107,6 +107,7 @@ class AdAccount extends Model
             'allocation_priority' => 'integer',
             'metadata' => 'array',
             'last_synced_at' => 'immutable_datetime',
+            'last_allocated_at' => 'immutable_datetime',
             'disabled_at' => 'immutable_datetime',
         ];
     }

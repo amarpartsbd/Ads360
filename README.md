@@ -8,13 +8,13 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 3 complete.** Authentication, tenancy, RBAC, audit logging,
+> **Status: Phase 4 complete.** Authentication, tenancy, RBAC, audit logging,
 > business verification (KYC), team management, the wallet, ledger, pricing,
-> exchange rate, deposit and invoice modules, and the advertising provider
-> abstraction — OAuth connections with encrypted credentials, connected asset
-> discovery, the managed ad account inventory, pools and health monitoring — are
-> in place and covered by tests. Campaign building, allocation and analytics are
-> not yet built — see [Roadmap](#roadmap).
+> exchange rate, deposit and invoice modules, the advertising provider
+> abstraction with OAuth connections and managed ad account inventory, and the
+> campaign engine — builder, approval workflow, allocation, idempotent
+> publishing and spend reconciliation — are in place and covered by tests.
+> Analytics and reporting are not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -160,15 +160,18 @@ Phases follow the platform specification.
 | 1     | Client onboarding, KYC, team management                     | Complete    |
 | 2     | Wallet, ledger, deposits, pricing, exchange rates, invoices | Complete    |
 | 3     | Provider abstraction, connected assets, ad account pools    | Complete    |
-| 4     | Campaign builder, approval workflow, allocation, publishing | Next        |
-| 5     | Meta integration                                            | Planned     |
+| 4     | Campaign builder, approval workflow, allocation, publishing | Complete    |
+| 5     | Meta integration                                            | Next        |
 | 6     | Analytics pipeline, reporting, reconciliation               | Planned     |
 | 7     | Google Ads                                                  | Planned     |
 | 8     | Agency and reseller module                                  | Planned     |
 | 9     | White label, advanced risk, AI assistance, enterprise APIs  | Planned     |
 
-No phase starts until the tenant isolation suite is green, and the financial
-concurrency suite (`--group=concurrency`) gates everything that touches money.
+No phase starts until the tenant isolation suite is green, and the
+`--group=concurrency` suite — real forked processes competing for one wallet and
+one ad account — gates everything that touches money or capacity. Campaign
+publishing is additionally gated on its idempotency suite: a retry must never
+create a second campaign at a provider.
 
 ## Provider policy
 

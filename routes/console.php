@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Console\Commands\CheckAdAccountsCommand;
 use App\Console\Commands\CheckProviderConnectionsCommand;
+use App\Console\Commands\SyncCampaignSpendCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -27,5 +28,17 @@ Schedule::command(CheckProviderConnectionsCommand::class)
 
 Schedule::command(CheckAdAccountsCommand::class)
     ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/*
+ * Campaign spend reconciliation (spec §32, §78).
+ *
+ * Every fifteen minutes rather than hourly: the figures here decide what a
+ * client is charged, and a campaign spending quickly should not run far ahead
+ * of what has been drawn from its hold.
+ */
+Schedule::command(SyncCampaignSpendCommand::class)
+    ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->onOneServer();

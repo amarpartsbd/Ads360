@@ -55,6 +55,14 @@ return [
         'maker_checker' => [
             'wallet_adjustment_minor' => (int) env('FINANCE_MAKER_CHECKER_ADJUSTMENT_MINOR', 5000000),
             'refund_minor' => (int) env('FINANCE_MAKER_CHECKER_REFUND_MINOR', 5000000),
+
+            /*
+             * Campaign budgets above this need a second approver (spec §25).
+             * Approving a campaign holds the client's money and commits an ad
+             * account to it, so past a certain size one person should not be
+             * able to do it alone.
+             */
+            'campaign_budget_minor' => (int) env('FINANCE_MAKER_CHECKER_CAMPAIGN_MINOR', 10000000),
         ],
 
         // How long an unfunded payment intent stays open before it is expired.

@@ -17,6 +17,7 @@ app/
 │   ├── Payment/        Deposits, gateways, verification
 │   ├── Billing/        Pricing, exchange rates, invoices
 │   ├── Advertising/    Provider abstraction, managed ad accounts, pools
+│   ├── Campaign/       Campaigns, ad sets, ads, creatives, publishing
 │   ├── Integration/    Provider connections, OAuth state, connected assets
 │   ├── Audit/          Immutable audit trail and secret redaction
 │   ├── System/         Platform settings and feature flags
@@ -344,7 +345,78 @@ boolean: an operator looking at an empty pool needs to know which rule emptied
 it. The engine that picks one account from the eligible set arrives with the
 campaign work.
 
-## 14. Money
+## 14. Campaigns
+
+`app/Domains/Campaign/`. A campaign is built by a client, reviewed by the
+platform, published to a provider, and reconciled against the ledger as it
+spends. Four decisions carry most of the weight.
+
+### Money is frozen at submission
+
+The client chooses a budget as a decimal string; everything else — fees, tax,
+the total — is derived server-side by the pricing engine and written onto the
+campaign at submission, along with a snapshot of the plan it came from. A plan
+that changes overnight does not change what the client agreed to, and the
+reviewer approving a figure is approving one that cannot move underneath them.
+
+Fees are added *on top of* the budget rather than taken out of it, so the amount
+that reaches the provider is the amount the client asked to spend.
+
+### Approval is where obligations are taken on
+
+`ApproveCampaign` reserves the budget against the wallet **and** allocates an ad
+account, in one transaction. Either both happen or neither: a campaign with
+money held and no account would sit unpublishable with a client's balance
+frozen, and one with an account but no hold would spend money nobody reserved.
+
+**Lock order is wallet, then ad account**, everywhere. Phase 2 was already
+bitten by a deadlock from inconsistent ordering; the rule is written down here
+because the next path that touches both will have to follow it too.
+
+### Allocation reads, then re-reads under a lock
+
+`AllocateAdAccount` treats the eligibility query as a *shortlist*, never as a
+decision. Each candidate is locked with `SELECT … FOR UPDATE`, **re-read under
+that lock**, and re-checked before the commitment is written. Locking and then
+trusting the earlier read would be the same race with extra ceremony.
+
+Each campaign records its own `account_commitment` — its share of the account's
+headroom. Without that column, releasing headroom as a campaign spends would
+subtract the same amount again on every sync.
+
+### Publishing is claim, call, settle
+
+Every provider request is claimed in `campaign_publications` **before** the call
+is made. That ordering is the whole point: a worker that dies after the provider
+acted but before anything was recorded leaves evidence that the request may have
+happened, so a retry reuses the same idempotency key instead of asking for a
+second campaign.
+
+Two indexes carry the guarantee, and neither depends on the application being
+careful:
+
+| Index | Prevents |
+| --- | --- |
+| `campaign_publications_unique_key` | One key, one attempt |
+| `campaign_publications_one_success_per_operation` | One success per entity per operation |
+
+Partial success is normal and is not undone. Three ad sets published and a
+fourth failed means three stay published; the retry starts at the fourth.
+Deleting them to "clean up" would delete things a provider has begun charging
+for.
+
+### Spend reconciliation
+
+Providers report spend-to-date; the platform stores capture-to-date; each run
+captures the difference. Adding up reported deltas would double-charge the first
+time a sync ran twice and lose money the first time one was missed.
+
+Fees follow spend — a client who uses half their budget owes fees on half — and
+the fee due is recomputed from the cumulative figure each time rather than
+accumulated, so rounding cannot drift over a month of hourly syncs. A provider
+that does not report spend leaves the stored figure alone; null is not zero.
+
+## 15. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -354,7 +426,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 15. Conventions
+## 16. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -378,17 +450,18 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 16. Reserved domains
+## 17. Reserved domains
 
-`Agency`, `Creative`, `Analytics`, `Notification`, `Support` exist as empty
-directories. The structure is declared up front so modules land
+`Agency`, `Analytics`, `Notification`, `Support` exist as empty directories.
+`Creative` holds the lean library the campaign engine needs; approval workflows
+and versioning arrive with the creative module proper. The structure is declared up front so modules land
 in the right place, but nothing is built until its phase.
 
 The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 17. Adding a module
+## 18. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

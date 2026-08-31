@@ -65,7 +65,15 @@ export default function AdminLayout({
         {
             label: 'Operations',
             items: [
-                { label: 'Campaign operations', icon: Megaphone, pending: true },
+                ...(can('campaigns.view')
+                    ? [
+                          {
+                              label: 'Campaign review',
+                              href: route('admin.campaigns.index'),
+                              icon: Megaphone,
+                          },
+                      ]
+                    : []),
                 ...(can('ad_accounts.view')
                     ? [
                           {

@@ -188,6 +188,11 @@ final class WalletService
     /**
      * Draw actual spend against a hold (spec §32).
      *
+     * The entry type is a parameter because a campaign draws two different
+     * things from one hold: the advertising spend itself, and the platform's
+     * fee on that spend. Recording both as CAMPAIGN_SPEND would make a
+     * client's statement claim we sent more to the provider than we did.
+     *
      * Written as two entries in one group: the held amount returns to available
      * and is then spent out of the wallet. That keeps every entry single-sided
      * and makes the statement read the way the money actually moved.
@@ -201,8 +206,13 @@ final class WalletService
         string $description,
         array $metadata = [],
         ?User $actor = null,
+        LedgerEntryType $type = LedgerEntryType::CampaignSpend,
     ): Collection {
-        return DB::transaction(function () use ($reservation, $amount, $description, $metadata, $actor): Collection {
+        if (! $type->isCapturable()) {
+            throw InvalidLedgerOperation::notCapturable($type->value);
+        }
+
+        return DB::transaction(function () use ($reservation, $amount, $description, $metadata, $actor, $type): Collection {
             // Wallet before reservation, matching the order used everywhere
             // else, so concurrent captures queue instead of deadlocking.
             $wallet = $reservation->wallet()->withoutGlobalScopes()->firstOrFail();
@@ -227,7 +237,7 @@ final class WalletService
                     reservedDelta: -$amount->minorUnits,
                 ),
                 LedgerMovement::debit(
-                    LedgerEntryType::CampaignSpend,
+                    $type,
                     $amount,
                     $description,
                     $locked,

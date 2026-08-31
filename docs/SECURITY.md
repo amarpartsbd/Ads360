@@ -171,6 +171,57 @@ What is implemented today, and what must be true before production.
   marked sensitive in the permission registry: the rules decide whose money runs
   through which account.
 
+### Campaigns and client money
+
+- A campaign's cost is computed entirely server-side and frozen at submission.
+  The browser sends a budget as a decimal string and receives formatted totals;
+  it never sends a minor-unit figure or a fee, and nothing in the request path
+  accepts one.
+- A client cannot approve their own campaign, and neither can the platform user
+  who submitted it. Both halves are enforced in the policy and re-checked in the
+  action, because separation of duties is the reason review exists.
+- Budgets above a configured threshold require two approvers
+  (`FINANCE_MAKER_CHECKER_CAMPAIGN_MINOR`).
+- Approval reserves money and allocates an ad account in one transaction, in a
+  fixed lock order (wallet, then ad account). A partial approval is not
+  reachable: the schema refuses a campaign past review that lacks either.
+- Rejection holds nothing, because nothing is held until approval — a campaign
+  waiting in a queue does not freeze a client's balance.
+- Targeting is validated by a value object on the way in and out. Anything it
+  cannot interpret stops the campaign rather than being dropped, so a narrowing
+  a client asked for cannot silently stop applying. Targeting on protected
+  characteristics is not offered at all.
+- Ads run under the client's own connected page or account, never the
+  platform's. The identity is re-checked against the campaign's organization in
+  the action, not only in the route binding.
+
+### Publishing
+
+- Every provider request is recorded before it is made. A worker that dies
+  mid-request leaves a pending row, and the retry reuses its idempotency key
+  rather than minting a new one — so a crash cannot become a duplicate campaign
+  spending a second budget.
+- Two unique indexes enforce this without relying on application logic: one key
+  per attempt, and one success per entity per operation. Both are asserted by
+  tests that bypass the service layer entirely.
+- Publication records cannot be deleted; the model refuses it. They are the
+  evidence that makes a duplicate detectable.
+- Provider error codes are never stored on a campaign or shown to a client. The
+  adapter's client-safe message is what is recorded, and a test asserts a raw
+  provider error does not reach the stored field.
+- A failed publish keeps its reservation and its ad account, so a client does
+  not lose held budget to another campaign before anyone can retry.
+
+### Creative files
+
+- Stored on a private disk and identified by their leading bytes, not their
+  declared type or extension. Paths are random and reveal nothing about the
+  uploader.
+- The storage path is `$hidden` on the model, so no prop or serialisation can
+  carry it; the only route to the bytes is a policy-checked, audited controller
+  that serves them as an attachment with `nosniff`.
+- A creative an ad depends on cannot be deleted.
+
 ### Data handling
 
 - Provider credentials are never sent to the browser. Nothing in the shared
@@ -195,9 +246,6 @@ for an oversight:
 - Client risk scoring (§12) — Phase 9.
 
 - Webhook signature verification (§52) — Phase 5.
-- Account allocation itself (§19) — Phase 4. Pools carry their rules and the
-  eligibility evaluator is in place; the engine that picks and holds an account
-  arrives with the campaign engine.
 
 - Reconciliation against provider spend (§78) — Phase 6. Wallet-level
   reconciliation exists (`Wallet::isReconciled()`) and is surfaced in the admin
@@ -218,7 +266,7 @@ From specification §98. Do not deploy to production until every line is true.
 [x] Authorization tests pass
 [x] Wallet race-condition tests pass
 [x] Payment idempotency tests pass
-[ ] Campaign idempotency tests pass           Phase 4
+[x] Campaign idempotency tests pass
 [x] OAuth state validation exists
 [x] Provider secrets encrypted
 [x] Admin 2FA enabled

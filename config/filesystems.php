@@ -73,6 +73,28 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
         ],
 
+        /*
+         * Uploaded advertising creatives (spec §23). Private for the same
+         * reason KYC documents are: the files belong to the client, and the
+         * only route to them is a policy-checked, audited controller.
+         */
+        'creatives' => [
+            'driver' => env('CREATIVES_DISK_DRIVER', 'local'),
+            'root' => storage_path('app/creatives'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+
+            // Used when CREATIVES_DISK_DRIVER=s3.
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_CREATIVES_BUCKET', env('AWS_BUCKET')),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

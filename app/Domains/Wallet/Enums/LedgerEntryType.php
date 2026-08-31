@@ -61,6 +61,23 @@ enum LedgerEntryType: string
     }
 
     /**
+     * Whether an amount of this type may be drawn out of a hold.
+     *
+     * Capture takes money from a reservation and spends it, so only the types
+     * that represent something being charged qualify. Capturing a DEPOSIT or a
+     * RELEASE would be adding to the balance while claiming to spend from it.
+     */
+    public function isCapturable(): bool
+    {
+        return in_array($this, [
+            self::CampaignSpend,
+            self::ServiceFee,
+            self::ManagementFee,
+            self::Tax,
+        ], true);
+    }
+
+    /**
      * Types a reversal may be written against. Reversing a reversal would make
      * the history impossible to read, and a reservation is undone by releasing
      * it rather than by reversing the entry.
