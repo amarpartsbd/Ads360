@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Activity,
     ArrowLeftRight,
@@ -10,6 +10,7 @@ import {
     ScrollText,
     Server,
     Settings,
+    ShieldAlert,
     ShieldCheck,
     Tag,
     Users,
@@ -19,6 +20,7 @@ import type { ReactNode } from 'react';
 import { FlashMessages } from '@/Components/Layout/FlashMessages';
 import { Sidebar, type NavSection } from '@/Components/Layout/Sidebar';
 import { Topbar } from '@/Components/Layout/Topbar';
+import type { SharedProps } from '@/Types';
 import { usePermissions } from '@/Hooks/usePermissions';
 
 /**
@@ -40,6 +42,13 @@ export default function AdminLayout({
 }) {
     const { can } = usePermissions();
 
+    /*
+     * The platform's own name, never a tenant's. The admin surface is ours and
+     * is deliberately not white-labelled: staff working across tenants need to
+     * know whose system they are in (spec §43).
+     */
+    const { platform } = usePage<SharedProps>().props;
+
     const sections: NavSection[] = [
         {
             items: [{ label: 'Dashboard', href: route('admin.dashboard'), icon: LayoutDashboard }],
@@ -52,6 +61,9 @@ export default function AdminLayout({
                     : []),
                 ...(can('clients.view')
                     ? [{ label: 'Agencies', href: route('admin.agencies.index'), icon: Users }]
+                    : []),
+                ...(can('risk.view')
+                    ? [{ label: 'Client risk', href: route('admin.risk.index'), icon: ShieldAlert }]
                     : []),
                 ...(can('clients.verify')
                     ? [
@@ -149,7 +161,7 @@ export default function AdminLayout({
             <Head title={title} />
 
             <div className="hidden md:block">
-                <Sidebar sections={sections} brand="Ads360 Admin" />
+                <Sidebar sections={sections} brand={`${platform.name} Admin`} />
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col">

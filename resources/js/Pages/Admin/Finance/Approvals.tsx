@@ -32,6 +32,11 @@ interface ApprovalRow {
     reason: string | null;
     required: number;
     received: number;
+    /** What is still missing, in one sentence. Null once nothing is. */
+    outstanding: string | null;
+    needsSenior: boolean;
+    /** Why this needs more scrutiny than its size asks for, if anything does. */
+    elevation: string | null;
     decisions: Decision[];
     canDecide: boolean;
     isOwnRequest: boolean;
@@ -110,6 +115,9 @@ export default function Approvals({
                                             <span className="text-xs text-muted-foreground">
                                                 {request.received} of {request.required} approvals
                                             </span>
+                                            {request.needsSenior ? (
+                                                <Badge tone="warning">Senior approval needed</Badge>
+                                            ) : null}
                                         </div>
                                         <p className="text-sm font-medium">{request.summary}</p>
                                         <p className="text-xs text-muted-foreground">
@@ -121,6 +129,16 @@ export default function Approvals({
                                         </p>
                                         {request.reason ? (
                                             <p className="text-sm text-muted-foreground">{request.reason}</p>
+                                        ) : null}
+                                        {request.elevation ? (
+                                            <p className="text-sm text-warning-foreground">
+                                                {request.elevation}
+                                            </p>
+                                        ) : null}
+                                        {request.outstanding ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                {request.outstanding}
+                                            </p>
                                         ) : null}
                                     </div>
 

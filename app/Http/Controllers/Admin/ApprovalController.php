@@ -64,6 +64,13 @@ final class ApprovalController
                 'reason' => $item->request_reason,
                 'required' => $item->required_approvals,
                 'received' => $item->approvals_received,
+                // Says which of the two things is missing rather than leaving
+                // a request sitting at "1 of 2" with no explanation (§25).
+                'outstanding' => $item->outstandingSummary(),
+                'needsSenior' => $item->awaitingSeniorApproval(),
+                // Why this request needs more scrutiny than its size asks for,
+                // when something does — today, a high-risk client (§12).
+                'elevation' => $item->elevation_reason,
                 'decisions' => $item->decisions->map(fn (ApprovalDecision $decision): array => [
                     'approver' => $decision->approver?->name ?? 'Unknown',
                     'decision' => $decision->decision,

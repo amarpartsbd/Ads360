@@ -8,6 +8,7 @@ import {
     LayoutDashboard,
     LifeBuoy,
     Megaphone,
+    Palette,
     Plug,
     Settings,
     ShieldCheck,
@@ -40,7 +41,7 @@ export default function ClientLayout({
     children: ReactNode;
 }) {
     const { can } = usePermissions();
-    const tenant = usePage<SharedProps>().props.tenant;
+    const { tenant, platform, features } = usePage<SharedProps>().props;
 
     /*
      * Only an agency or reseller has clients (spec §42). A direct client tenant
@@ -48,6 +49,12 @@ export default function ClientLayout({
      * client and a list of one would be noise.
      */
     const managesClients = tenant?.managesClients === true && can('clients.view');
+
+    /*
+     * The tenant's own name, never ours (spec §43, Rule 6). A white-labelled
+     * agency's staff should not see the platform's name in their sidebar.
+     */
+    const brand = tenant?.branding.name ?? platform.name;
 
     const sections: NavSection[] = [
         {
@@ -118,6 +125,9 @@ export default function ClientLayout({
                     : []),
                 { label: 'Support', icon: LifeBuoy, pending: true },
                 { label: 'Organization', href: route('client.settings.organization'), icon: Building2 },
+                ...(features.white_label && can('branding.manage')
+                    ? [{ label: 'Branding', href: route('client.branding.edit'), icon: Palette }]
+                    : []),
                 { label: 'Security', href: route('client.security.edit'), icon: Settings },
             ],
         },
@@ -128,7 +138,7 @@ export default function ClientLayout({
             <Head title={title} />
 
             <div className="hidden md:block">
-                <Sidebar sections={sections} brand="Ads360" />
+                <Sidebar sections={sections} brand={brand} logoUrl={tenant?.branding.logo_url ?? null} />
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col">

@@ -37,6 +37,8 @@ class ApprovalRequest extends Model
         'amount',
         'currency',
         'required_approvals',
+        'requires_senior_approval',
+        'elevation_reason',
         'status',
         'requested_by',
         'request_reason',
@@ -49,6 +51,8 @@ class ApprovalRequest extends Model
     {
         return [
             'action_type' => ApprovableAction::class,
+            'requires_senior_approval' => 'boolean',
+            'senior_approved_at' => 'immutable_datetime',
             'status' => ApprovalStatus::class,
             'payload' => 'array',
             'amount' => 'integer',
@@ -121,5 +125,39 @@ class ApprovalRequest extends Model
     public function outstandingApprovals(): int
     {
         return max(0, $this->required_approvals - $this->approvals_received);
+    }
+
+    /** Whether the senior signature §25 asks for is still missing. */
+    public function awaitingSeniorApproval(): bool
+    {
+        return $this->requires_senior_approval && $this->senior_approved_at === null;
+    }
+
+    /**
+     * What this request is still waiting for, in one sentence.
+     *
+     * A queue that says "1 of 2" while a request sits there for a day is a
+     * queue nobody trusts. This says which of the two things is missing —
+     * another signature, a senior one, or both.
+     */
+    public function outstandingSummary(): ?string
+    {
+        if (! $this->isOpen()) {
+            return null;
+        }
+
+        $signatures = $this->outstandingApprovals();
+        $senior = $this->awaitingSeniorApproval();
+
+        return match (true) {
+            $signatures > 0 && $senior => $signatures === 1
+                ? 'Waiting on one more approval, which must include a senior approver.'
+                : "Waiting on {$signatures} more approvals, which must include a senior approver.",
+            $signatures > 0 => $signatures === 1
+                ? 'Waiting on one more approval.'
+                : "Waiting on {$signatures} more approvals.",
+            $senior => 'Has enough approvals, but still needs a senior approver.',
+            default => null,
+        };
     }
 }

@@ -8,13 +8,18 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 8 complete.** Authentication, tenancy, RBAC, audit logging,
+> **Status: Phase 9 in progress.** Authentication, tenancy, RBAC, audit logging,
 > business verification (KYC), team management, the wallet, ledger, pricing,
 > exchange rate, deposit and invoice modules, the advertising provider
 > abstraction with managed ad account inventory, the campaign engine, live Meta
 > and Google Ads adapters, the analytics pipeline with spend reconciliation and
-> report exports, and the agency and reseller module are in place and covered by
-> tests.
+> report exports, the agency and reseller module, the client risk engine,
+> senior approval on maker-checker, white-label branding and the assistant
+> abstraction are in place and covered by tests.
+>
+> Four items of Phase 9 are **not** built: advanced automation rules, data
+> warehouse integration, public enterprise APIs and SSO — see
+> [Roadmap](#roadmap).
 >
 > Both provider adapters are tested against faked APIs; neither has been run
 > against the provider itself, which needs reviewed applications and real
@@ -22,8 +27,9 @@ spend is reconciled back against the client's ledger.
 > [Going live with Google Ads](docs/DEPLOYMENT.md). Google Ads is behind
 > `FEATURE_GOOGLE_ADS` and publishes search campaigns only; what it does not do
 > is listed in the deployment notes. The agency module is behind
-> `FEATURE_AGENCY_MODULE`. White-label branding, the advanced risk engine and
-> AI assistance are not yet built — see [Roadmap](#roadmap).
+> `FEATURE_AGENCY_MODULE`, white label behind `FEATURE_WHITE_LABEL`, and the
+> assistant behind `FEATURE_AI_ASSISTANT` with no live adapter — only a mock
+> that refuses to run in production.
 
 ---
 
@@ -174,7 +180,28 @@ Phases follow the platform specification.
 | 6     | Analytics pipeline, reporting, reconciliation               | Complete    |
 | 7     | Google Ads                                                  | Complete    |
 | 8     | Agency and reseller module                                  | Complete    |
-| 9     | White label, advanced risk, AI assistance, enterprise APIs  | Next        |
+| 9     | White label, advanced risk, AI assistance, enterprise APIs  | Partly done |
+
+Phase 9 is eight enterprise items rather than one module. Built: the client risk
+engine, senior approval on maker-checker, white-label branding, and the
+assistant abstraction with deterministic performance insights. Not built:
+advanced automation rules, data warehouse integration, public enterprise APIs,
+and SSO. Each of those is a phase-sized piece of work in its own right, and
+none of them is half-present — there is no partial automation engine or stub API
+to mistake for a finished one.
+
+### Risk
+
+Every organization carries a risk score built from stored facts — verification,
+payment failures, campaign rejections, refunds, spending against its own
+average, failed sign-ins, account age, and a compliance officer's flag. Each
+factor has a ceiling, the ceilings sum to 100, and every point comes with a
+sentence explaining it.
+
+A score does exactly one thing on its own: a financial action on a high-risk
+client needs a second approver. Nothing suspends an account, freezes a wallet or
+stops a campaign automatically. A scoring mistake should cost someone a minute,
+not cost a client their advertising.
 
 ### Agencies
 

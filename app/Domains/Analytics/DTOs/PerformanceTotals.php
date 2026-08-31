@@ -103,6 +103,9 @@ final readonly class PerformanceTotals
         return [
             'spend' => $this->spend->format(),
             'spendMinor' => $this->spend->minorUnits,
+            // The currency travels with the figures, so anything comparing
+            // two rows can tell whether they are comparable at all.
+            'currency' => $this->spend->currency->code,
             'impressions' => $this->impressions,
             'clicks' => $this->clicks,
             'reach' => $this->reach,
@@ -112,6 +115,9 @@ final readonly class PerformanceTotals
             'costPerClick' => $this->costPerClick()?->format(),
             'costPerMille' => $this->costPerMille()?->format(),
             'costPerConversion' => $this->costPerConversion()?->format(),
+            // The minor-unit figure as well as the formatted one: a comparison
+            // between two campaigns has to be arithmetic, not string sorting.
+            'costPerConversionMinor' => $this->costPerConversion()?->minorUnits,
             'returnOnAdSpend' => $this->returnOnAdSpend(),
         ];
     }

@@ -683,7 +683,128 @@ until platform compliance reviews it — an agency vouching for its own client
 would be the business being checked signing off on the check (§11). The agency
 can build campaigns immediately; what it cannot do is make them spend.
 
-## 18. Analytics and reconciliation
+## 18. Client risk
+
+`app/Domains/Client/`. Every organization has a risk profile: a score from 0 to
+100, a band, and — the part that matters — the reasons that produced it.
+
+### Deterministic, explainable, bounded
+
+In that order of importance.
+
+**Deterministic.** The same account with the same history scores the same every
+time. No model, no randomness, no learned weight. §12 requires risk decisions to
+be explainable, and a number nobody can reproduce cannot be explained, appealed
+or corrected.
+
+**Explainable.** Each factor contributes points with a sentence beside them —
+"3 payments failed in the last 90 days", not `payment_failures: 3`. The reasons
+are stored with the score, so the queue shows what it meant *when it was
+assessed* rather than what the same inputs would produce today.
+
+**Bounded.** Every factor has a ceiling and the ceilings sum to 100, so the
+score is a percentage by construction rather than by clamping afterwards.
+
+| Factor | Ceiling | Why it weighs what it does |
+|---|---:|---|
+| Verification incomplete | 25 | The one fact rather than an inference: an unverified business is unverified |
+| Compliance flag | 20 | A person looked and said something is wrong |
+| Payment failures | 15 | Five points a failure; three is a pattern |
+| Campaign rejections | 12 | A provider's or reviewer's judgement about the advertising |
+| Abnormal spending | 10 | Measured against the account's *own* average, never against other clients |
+| Refunds | 8 | |
+| Failed sign-ins | 6 | The lightest: a forgotten password is the commonest event on any platform |
+| New account | 4 | No history to judge; expires on its own |
+
+The behavioural factors look back ninety days. A score that never forgets is a
+score nobody can improve.
+
+### The only thing a score is allowed to do
+
+**Add an approver.** A financial action on a High or Critical organization needs
+a second signature whatever its size, and the approver is told why in a sentence
+— an instruction nobody can evaluate is one people learn to click through.
+
+That is the whole list. Nothing in this platform suspends an account, freezes a
+wallet or stops a campaign because of a score. §12 is explicit that financial
+access is never withdrawn without a deterministic rule *and* a human decision,
+and the design follows from a simple asymmetry: a scoring mistake that asks for
+a second signature costs someone a minute, and one that suspends an account
+costs a client their advertising.
+
+A compliance officer's flag is the only non-computed input. It survives every
+reassessment until someone clears it, and clearing it keeps the record that it
+existed (§62).
+
+### Senior approval
+
+§25 asks for "Finance + Senior Approval" on the largest movements, which is not
+the same as two of anyone. A movement large enough to need two approvals now
+also needs one of them to hold `approvals.senior` — a permission finance-admin
+deliberately does not have, because a permission the same role already held
+would make the second signature a formality.
+
+A request with its two approvals but no senior signature stays pending, and the
+queue says which of the two things is missing rather than sitting at "1 of 2".
+
+## 19. White label
+
+`Tenant\Values\Branding`. A tenant sets a name, a logo, a primary colour, a
+support address and its own domain; anything left blank falls back to the
+platform's own, which is why no branding value is hard-coded at a call site
+(Rule 6).
+
+**The colour is validated, not just stored.** The one thing a customer most
+wants to change is the one that decides whether text on a button can be read, so
+a primary colour must reach 4.5:1 against white — WCAG AA for normal text, and
+button labels are normal text. A colour that fails is refused at the point
+someone chooses it, with the ratio in the message so "make it darker" is
+actionable. Stored branding is read back through the same object that validated
+it, so a document written by an older release cannot put an unreadable colour on
+a screen.
+
+Branding reaches the `<head>` through a view composer rather than an Inertia
+prop, because the browser tab's title and the colour variable are rendered
+before any React component exists — a tenant whose colour only arrived after
+hydration would watch our blue flash on every page load.
+
+The admin surface is deliberately *not* white-labelled: staff working across
+tenants need to know whose system they are in.
+
+## 20. The assistant
+
+`app/Domains/Assistant/`. Shaped like the advertising provider abstraction —
+a contract, a mock, a manager, and a driver that refuses rather than falling
+back.
+
+**Output is a recommendation.** §45 is explicit that a person approves before
+financial execution, and `DecideRecommendation` is built so that it *cannot*
+execute: no wallet, no campaign service and no publisher is injected into it, so
+a future change that tried to make acceptance spend money would have to add one
+and would be visible in review. Accepting returns a payload to prefill a form
+with; the campaign is then built through the ordinary builder and goes through
+the same review, approval and reservation as one a client typed.
+
+**Provenance is a column, not a note.** Every recommendation records its driver,
+model and version — including the deterministic ones, where it records that no
+model was involved, which is itself the useful fact. The *brief* is never
+stored, only a digest of it: a client describing their business will mention
+unannounced products and margins, and that does not belong in a table every
+recommendation screen reads (§53, §54).
+
+**Insights are arithmetic.** §47's own example — one campaign costs ৳180 a lead,
+another ৳72 — is a comparison over data the platform already has. Doing it with
+a model would turn a reproducible fact into an unreproducible opinion and charge
+per request. The thresholds are chosen so noise is not reported: twice the cost,
+at least ten conversions, and never across two currencies, because a rate this
+service invented would be advice built on a number nobody chose.
+
+The mock refuses to run in production, and that refusal matters more here than
+for a provider mock: a mock adapter reporting a published campaign is caught the
+first time a client asks why their ads never ran, while mock *copy* gets
+published to real audiences under a client's name and may never be noticed.
+
+## 21. Analytics and reconciliation
 
 `app/Domains/Analytics/`. Two pipelines that look similar and answer different
 questions: what a client is *shown*, and what a client is *charged*. They are
@@ -754,7 +875,7 @@ client typed, and a spreadsheet evaluates a cell beginning with `=`, `+`, `-`
 or `@`. Quoting protects the file's structure, not the spreadsheet that opens
 it, so such values are prefixed to force them to be read as text.
 
-## 19. Money
+## 22. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -764,7 +885,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 20. Conventions
+## 23. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -788,7 +909,7 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 21. Reserved domains
+## 24. Reserved domains
 
 `Agency`, `Notification`, `Support` exist as empty directories.
 `Creative` holds the lean library the campaign engine needs; approval workflows
@@ -799,7 +920,7 @@ The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 22. Adding a module
+## 25. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

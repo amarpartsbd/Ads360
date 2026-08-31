@@ -79,6 +79,11 @@ class RoleSeeder extends Seeder
                     P::PaymentsView, P::PaymentsVerify,
                     P::PricingView, P::PricingManage,
                     P::ExchangeRatesView, P::ExchangeRatesManage,
+                    // Reads risk because it decides whether to release funds;
+                    // does not hold RiskManage, and deliberately does not hold
+                    // ApprovalsSenior — "Finance + Senior Approval" is two
+                    // different kinds of person (spec §25).
+                    P::RiskView,
                     P::ReportsView, P::ReportsExport, P::AuditView,
                 ],
             ],
@@ -90,6 +95,8 @@ class RoleSeeder extends Seeder
                 'permissions' => [
                     P::ClientsView, P::ClientsVerify, P::ClientsSuspend,
                     P::CampaignsView, P::CampaignsApprove, P::CampaignsReject,
+                    // Compliance owns the risk queue (spec §12).
+                    P::RiskView, P::RiskManage,
                     P::AuditView, P::ReportsView,
                 ],
             ],
@@ -143,6 +150,9 @@ class RoleSeeder extends Seeder
                     P::AssetsView, P::AssetsConnect, P::AssetsDisconnect,
                     P::CreativesView, P::CreativesUpload, P::CreativesDelete,
                     P::ReportsView, P::ReportsExport,
+                    // White label: an agency brands its own copy of the
+                    // platform for the clients it manages (spec §43).
+                    P::BrandingManage,
                     P::UsersManage, P::RolesManage, P::SupportView, P::AuditView,
                 ],
             ],

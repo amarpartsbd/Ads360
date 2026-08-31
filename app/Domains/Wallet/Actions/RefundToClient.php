@@ -49,7 +49,9 @@ final class RefundToClient
     ): LedgerEntry|ApprovalRequest {
         $this->guard($wallet, $amount, $reason, $againstPayment);
 
-        if ($this->approvals->isRequired(ApprovableAction::Refund, $amount)) {
+        // The organization is passed so a high-risk client raises the bar
+        // even below the size threshold (spec §12).
+        if ($this->approvals->isRequired(ApprovableAction::Refund, $amount, $wallet->organization)) {
             return $this->approvals->request(
                 action: ApprovableAction::Refund,
                 requester: $actor,

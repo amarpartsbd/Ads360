@@ -24,6 +24,8 @@ use App\Domains\Campaign\Models\Campaign;
 use App\Domains\Campaign\Models\Creative;
 use App\Domains\Campaign\Policies\CampaignPolicy;
 use App\Domains\Campaign\Policies\CreativePolicy;
+use App\Domains\Client\Models\OrganizationRiskProfile;
+use App\Domains\Client\Policies\OrganizationRiskProfilePolicy;
 use App\Domains\Compliance\Models\VerificationDocument;
 use App\Domains\Compliance\Models\VerificationProfile;
 use App\Domains\Compliance\Policies\VerificationDocumentPolicy;
@@ -75,6 +77,7 @@ class AuthServiceProvider extends ServiceProvider
         AdAccount::class => AdAccountPolicy::class,
         AdAccountPool::class => AdAccountPoolPolicy::class,
         Campaign::class => CampaignPolicy::class,
+        OrganizationRiskProfile::class => OrganizationRiskProfilePolicy::class,
         Creative::class => CreativePolicy::class,
         ReportExport::class => ReportExportPolicy::class,
         SpendReconciliation::class => SpendReconciliationPolicy::class,

@@ -80,6 +80,22 @@ enum Permission: string
     case SupportView = 'support.view';
     case SupportRespond = 'support.respond';
 
+    // White label (spec §43)
+    case BrandingManage = 'branding.manage';
+
+    // Client risk (spec §12)
+    case RiskView = 'risk.view';
+    case RiskManage = 'risk.manage';
+
+    /*
+     * The second signature on the largest financial movements (spec §25).
+     *
+     * Deliberately *not* held by finance-admin: "Finance + Senior Approval"
+     * means two different kinds of person, and a permission the same role
+     * already has would make the second signature a formality.
+     */
+    case ApprovalsSenior = 'approvals.senior';
+
     // Platform system administration
     case SystemManage = 'system.manage';
     case SettingsManage = 'settings.manage';
@@ -111,6 +127,9 @@ enum Permission: string
             self::ClientsSuspend,
             self::AdAccountsAssign,
             self::AdAccountsManagePools,
+            self::RiskManage,
+            self::ApprovalsSenior,
+            self::BrandingManage,
         ], true);
     }
 
@@ -130,6 +149,10 @@ enum Permission: string
             self::CampaignsReject => 'Reject submitted campaigns',
             self::CampaignsPublish => 'Publish campaigns to a provider',
             self::CampaignsPause => 'Pause or resume campaigns',
+            self::BrandingManage => 'Change the branding of this workspace',
+            self::RiskView => 'View client risk profiles',
+            self::RiskManage => 'Flag, clear and review client risk',
+            self::ApprovalsSenior => 'Give the senior signature on the largest movements',
             self::WalletView => 'View wallet balances and ledger',
             self::WalletDeposit => 'Submit wallet deposits',
             self::WalletAdjust => 'Post manual wallet adjustments',

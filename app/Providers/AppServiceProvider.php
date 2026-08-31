@@ -9,6 +9,7 @@ use App\Domains\Advertising\Services\ProviderManager;
 use App\Domains\Tenant\Services\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,5 +44,25 @@ class AppServiceProvider extends ServiceProvider
         if (config('platform.security.force_https', false) || $this->app->isProduction()) {
             URL::forceScheme('https');
         }
+
+        $this->shareBrandingWithTheShell();
+    }
+
+    /**
+     * The tenant's branding, available to the HTML document itself (spec §43).
+     *
+     * A view composer rather than an Inertia shared prop, because two of the
+     * things branding decides — the browser tab's title and the primary colour
+     * variable — live in the document `<head>` and are rendered before any
+     * React component exists. A tenant whose colour only arrived after
+     * hydration would watch their platform flash our blue on every page load.
+     */
+    private function shareBrandingWithTheShell(): void
+    {
+        View::composer('app', static function ($view): void {
+            $tenant = app(TenantContext::class)->tenant();
+
+            $view->with('branding', $tenant?->brandingValue()->toArray() ?? []);
+        });
     }
 }

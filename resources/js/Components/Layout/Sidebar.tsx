@@ -19,13 +19,31 @@ export interface NavSection {
     items: NavItem[];
 }
 
-export function Sidebar({ sections, brand }: { sections: NavSection[]; brand: string }) {
+export function Sidebar({
+    sections,
+    brand,
+    logoUrl = null,
+}: {
+    sections: NavSection[];
+    brand: string;
+    /** A white-labelled tenant's own mark (spec §43). */
+    logoUrl?: string | null;
+}) {
     const currentUrl = usePage().url;
 
     return (
         <nav aria-label="Primary" className="flex h-full w-60 flex-col border-r border-border bg-surface">
-            <div className="flex h-14 items-center border-b border-border px-5">
-                <span className="text-sm font-semibold tracking-tight">{brand}</span>
+            <div className="flex h-14 items-center gap-2 border-b border-border px-5">
+                {logoUrl ? (
+                    /*
+                     * The brand name stays as the alt text rather than being
+                     * dropped: a logo that fails to load must not leave the
+                     * workspace unnamed (spec §74).
+                     */
+                    <img src={logoUrl} alt={brand} className="h-6 max-w-32 object-contain" />
+                ) : (
+                    <span className="text-sm font-semibold tracking-tight">{brand}</span>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 py-4">

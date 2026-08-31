@@ -30,6 +30,47 @@ enum ApprovableAction: string
         };
     }
 
+    /**
+     * Whether this action moves money or commits a client's funds.
+     *
+     * Used by the risk engine: financial actions on a high-risk organization
+     * gain an approver they would not otherwise need (spec §12). An exchange
+     * rate change is included because it decides what every client is charged
+     * for provider spend, even though it names no single wallet.
+     */
+    public function isFinancial(): bool
+    {
+        return match ($this) {
+            self::WalletAdjustment, self::Refund,
+            self::ExchangeRateChange, self::CampaignApproval => true,
+        };
+    }
+
+    /**
+     * Whether an action of this size needs a *senior* signature as well as a
+     * second one (spec §25).
+     *
+     * "Finance + Senior Approval" is two different kinds of person. Two
+     * approvals from the same role is a second pair of eyes; it is not a
+     * second level of authority, and on the largest movements the
+     * specification asks for the latter.
+     *
+     * Tied to the two-approval threshold rather than given a third one of its
+     * own: a movement large enough to need two people is exactly the movement
+     * worth escalating, and a separate configurable number would be one more
+     * thing to get wrong.
+     */
+    public function requiresSeniorApproval(?int $amountMinorUnits): bool
+    {
+        return $this->isFinancial() && $this->requiredApprovals($amountMinorUnits) >= 2;
+    }
+
+    /** The permission the senior signature needs. */
+    public function seniorApprovalPermission(): Permission
+    {
+        return Permission::ApprovalsSenior;
+    }
+
     /** The permission a second pair of eyes must hold to sign this off. */
     public function approvalPermission(): Permission
     {

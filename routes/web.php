@@ -13,12 +13,14 @@ use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\ReconciliationController;
+use App\Http\Controllers\Admin\RiskController;
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Client\AgencyClientController;
 use App\Http\Controllers\Client\AnalyticsController;
 use App\Http\Controllers\Client\AssetController;
+use App\Http\Controllers\Client\BrandingController;
 use App\Http\Controllers\Client\CampaignController;
 use App\Http\Controllers\Client\ClientDashboardController;
 use App\Http\Controllers\Client\CreativeController;
@@ -220,6 +222,13 @@ Route::middleware(['auth', 'verified', 'tenant'])
         });
 
         // Settings.
+        /*
+         * White-label branding (spec §43). Tenant-level: an agency whose
+         * clients each saw a different logo would have no white label at all.
+         */
+        Route::get('settings/branding', [BrandingController::class, 'edit'])->name('branding.edit');
+        Route::put('settings/branding', [BrandingController::class, 'update'])->name('branding.update');
+
         Route::get('settings/organization', [OrganizationSettingsController::class, 'edit'])
             ->name('settings.organization');
         Route::put('settings/organization', [OrganizationSettingsController::class, 'update'])
@@ -262,6 +271,25 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
         Route::get('agencies/{agency}', [AgencyController::class, 'show'])->name('agencies.show');
         Route::post('agencies/{agency}/pricing', [AgencyController::class, 'assignPlan'])
             ->name('agencies.pricing');
+
+        /*
+         * Client risk (spec §12).
+         *
+         * Every route here records a person's decision about a score. There is
+         * deliberately none that suspends an account: risk never withdraws
+         * financial access on its own, and suspension lives behind its own
+         * permission where it always did.
+         */
+        Route::prefix('risk')->name('risk.')->group(function (): void {
+            Route::get('/', [RiskController::class, 'index'])->name('index');
+            Route::post('{organization}/reassess', [RiskController::class, 'reassess'])
+                ->name('reassess');
+            Route::post('{organization}/flag', [RiskController::class, 'flag'])->name('flag');
+            Route::delete('{organization}/flag', [RiskController::class, 'clearFlag'])
+                ->name('flag.clear');
+            Route::post('{organization}/reviewed', [RiskController::class, 'markReviewed'])
+                ->name('reviewed');
+        });
 
         // Compliance (spec §41).
         Route::get('verification', [AdminVerificationController::class, 'index'])->name('verification.index');

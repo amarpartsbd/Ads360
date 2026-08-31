@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\AssessClientRiskCommand;
 use App\Console\Commands\CheckAdAccountsCommand;
 use App\Console\Commands\CheckProviderConnectionsCommand;
 use App\Console\Commands\IngestCampaignMetricsCommand;
@@ -71,5 +72,19 @@ Schedule::command(ReconcileSpendCommand::class)
 // stays (spec §39, §55).
 Schedule::command(PruneReportExportsCommand::class)
     ->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/*
+ * Client risk (spec §12).
+ *
+ * Six-hourly rather than hourly: the factors it reads move over days, not
+ * minutes, and a score that is a few hours old is no worse a basis for a
+ * compliance decision than one from this minute. On the analytics queue, which
+ * is the lowest band — nothing here decides what a client is charged, and it
+ * must never delay publishing or spend capture (spec §28).
+ */
+Schedule::command(AssessClientRiskCommand::class)
+    ->everySixHours()
     ->withoutOverlapping()
     ->onOneServer();

@@ -88,6 +88,24 @@ return [
     ],
 
     /*
+     * The AI assistant (spec §45–§47).
+     *
+     * `none` by default, and deliberately so. An assistant that was on unless
+     * someone turned it off would be writing copy for clients' audiences on a
+     * platform where nobody had chosen a model.
+     *
+     * `mock` is for development only — it refuses to instantiate in production,
+     * because a convincing fake is exactly what would reach a client unnoticed.
+     */
+    'assistant' => [
+        'driver' => env('ASSISTANT_DRIVER', 'none'),
+
+        // Languages the platform offers to ask for (spec §46). An adapter that
+        // cannot write one of them says so rather than answering in another.
+        'languages' => ['en', 'bn'],
+    ],
+
+    /*
      * Reporting and exports (spec §39).
      */
     'reporting' => [

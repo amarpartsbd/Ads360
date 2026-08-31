@@ -176,6 +176,77 @@ Agency staff below owner level are assigned per client, from the agency's own
 client detail screen. An agency cannot verify its own clients — that stays with
 platform compliance.
 
+## Turning on white label
+
+`FEATURE_WHITE_LABEL=true`, then grant `branding.manage` — agency-owner has it
+by default. A tenant sets its name, logo, primary colour, support address and
+domain under Settings → Branding.
+
+Two things need doing outside the application:
+
+- **DNS.** The customer points a CNAME at the platform. Storing a domain does
+  not serve it.
+- **TLS.** A certificate has to exist for that hostname before it resolves here,
+  or every visitor gets a browser warning with the customer's brand on it.
+
+The primary colour is refused unless it reaches 4.5:1 against white. That is not
+adjustable by configuration, and deliberately: a customer who talks you into a
+lighter brand colour gets an interface their own staff cannot read, and the
+support cost lands here.
+
+The admin area is never white-labelled.
+
+## Turning on the risk engine
+
+Nothing to turn on — risk is assessed for every organization from the moment
+this release is deployed, by `clients:assess-risk` every six hours. Add it to
+the schedule check when reviewing cron health.
+
+Two operational notes:
+
+- **The queue is at Admin → Client risk**, and needs `risk.view`.
+  compliance-admin has it; finance-admin can read but not flag.
+- **A high or critical score adds an approver to financial actions on that
+  client.** Nothing is blocked, suspended or frozen. If an operator expects risk
+  to stop an account, that expectation is wrong and the queue's own guidance
+  says so.
+
+Backfilling a fresh deployment is `php artisan clients:assess-risk` — the sweep
+is idempotent and can be run at any time.
+
+## The assistant
+
+`ASSISTANT_DRIVER` is `none` and `FEATURE_AI_ASSISTANT` is false. Leave both
+that way in production for now: the only adapter that exists is a mock, and it
+**refuses to instantiate in production** because stub copy would otherwise be
+published to real audiences under a client's name.
+
+When a live adapter is written, two rules are not negotiable and are enforced in
+code rather than by convention:
+
+- Output is a recommendation. `DecideRecommendation` has no wallet, campaign
+  service or publisher injected, so acceptance cannot execute anything.
+- Provenance is stored on every row — driver, model and version — and the brief
+  itself never is, only a digest.
+
+Performance insights (Admin and client analytics) need none of this: they are
+arithmetic over the client's own figures and run whether or not an assistant is
+configured.
+
+## What Phase 9 does not include
+
+Named here so nobody goes looking for them:
+
+| Not built | Why it is not half-built |
+|---|---|
+| Advanced automation rules | Rules that pause campaigns or move budget touch money without a person present; that needs its own maker-checker story, not a rules table |
+| Data warehouse integration | An export target, a schedule and a schema contract — a phase in itself |
+| Public enterprise APIs | §54 and §85 set a bar (versioning, tenant scoping, rate limiting, output filtering) that a stub API would fail |
+| SSO | The identity model supports it; no provider integration exists |
+
+There is deliberately no partial implementation of any of them to mistake for a
+finished one.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production

@@ -29,3 +29,6 @@ Thumbs.db
 
 # Locally stored private documents
 /storage/documents
+
+# Redis snapshot written when a local server is stopped.
+dump.rdb

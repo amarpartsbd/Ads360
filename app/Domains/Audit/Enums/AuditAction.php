@@ -43,6 +43,7 @@ enum AuditAction: string
     case TenantCreated = 'tenant.created';
     case TenantUpdated = 'tenant.updated';
     case TenantSuspended = 'tenant.suspended';
+    case TenantBrandingChanged = 'tenant.branding.changed';
     case OrganizationCreated = 'tenant.organization.created';
     case OrganizationUpdated = 'tenant.organization.updated';
     case OrganizationSuspended = 'tenant.organization.suspended';
@@ -71,6 +72,18 @@ enum AuditAction: string
     case VerificationDocumentUploaded = 'compliance.document.uploaded';
     case VerificationDocumentDeleted = 'compliance.document.deleted';
     case VerificationDocumentDownloaded = 'compliance.document.downloaded';
+
+    // Assistant (spec §45, §46)
+    case RecommendationOffered = 'assistant.recommendation.offered';
+    case RecommendationAccepted = 'assistant.recommendation.accepted';
+    case RecommendationDismissed = 'assistant.recommendation.dismissed';
+
+    // Client risk (spec §12)
+    case RiskAssessed = 'risk.assessed';
+    case RiskLevelChanged = 'risk.level_changed';
+    case RiskFlagRaised = 'risk.flag.raised';
+    case RiskFlagCleared = 'risk.flag.cleared';
+    case RiskReviewed = 'risk.reviewed';
 
     // Finance
     case DepositSubmitted = 'finance.deposit.submitted';

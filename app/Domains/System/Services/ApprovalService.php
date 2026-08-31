@@ -6,6 +6,7 @@ namespace App\Domains\System\Services;
 
 use App\Domains\Audit\Enums\AuditAction;
 use App\Domains\Audit\Services\AuditRecorder;
+use App\Domains\Client\Models\OrganizationRiskProfile;
 use App\Domains\Identity\Models\User;
 use App\Domains\System\Enums\ApprovableAction;
 use App\Domains\System\Enums\ApprovalStatus;
@@ -26,6 +27,13 @@ use Illuminate\Validation\ValidationException;
  *
  * Executing an approved request is the caller's job: this service decides
  * *whether* something may proceed, not what it does.
+ *
+ * Two things raise the bar beyond an action's own threshold. A movement large
+ * enough to need two approvals also needs one of them to be *senior* — §25 asks
+ * for "Finance + Senior Approval", which is two kinds of person rather than two
+ * people. And a financial action on a high-risk client needs a second approver
+ * whatever its size (§12), which is the only automatic consequence a risk score
+ * has anywhere in this platform.
  */
 final class ApprovalService
 {
@@ -33,10 +41,24 @@ final class ApprovalService
 
     /**
      * Whether an action of this size needs approval before it takes effect.
+     *
+     * Size is the usual answer. The other one is the client: a financial
+     * action on a high-risk organization needs a second pair of eyes whatever
+     * its size (spec §12). That is the *only* automatic consequence a risk
+     * score has anywhere in this platform, and it deliberately adds a person
+     * rather than taking one away — a scoring mistake should cost someone a
+     * minute, not cost a client their advertising.
      */
-    public function isRequired(ApprovableAction $action, ?Money $amount): bool
-    {
-        return $action->requiresApproval($amount?->minorUnits);
+    public function isRequired(
+        ApprovableAction $action,
+        ?Money $amount,
+        ?Organization $organization = null,
+    ): bool {
+        if ($action->requiresApproval($amount?->minorUnits)) {
+            return true;
+        }
+
+        return $this->riskElevation($action, $organization) !== null;
     }
 
     /**
@@ -53,6 +75,16 @@ final class ApprovalService
         ?Organization $organization = null,
         ?string $reason = null,
     ): ApprovalRequest {
+        $elevation = $this->riskElevation($action, $organization);
+
+        /*
+         * Whichever asks for more wins. A large movement on a high-risk client
+         * does not need three signatures: two people have already looked, and
+         * adding a third would slow every one of them down without anyone
+         * seeing anything new.
+         */
+        $required = max($action->requiredApprovals($amount?->minorUnits), $elevation === null ? 1 : 2);
+
         $request = ApprovalRequest::query()->create([
             'tenant_id' => $organization?->tenant_id,
             'organization_id' => $organization?->getKey(),
@@ -61,7 +93,9 @@ final class ApprovalService
             'payload' => $payload,
             'amount' => $amount?->minorUnits,
             'currency' => $amount?->currency->code,
-            'required_approvals' => $action->requiredApprovals($amount?->minorUnits),
+            'required_approvals' => $required,
+            'requires_senior_approval' => $action->requiresSeniorApproval($amount?->minorUnits),
+            'elevation_reason' => $elevation,
             'status' => ApprovalStatus::Pending,
             'requested_by' => $requester->getKey(),
             'request_reason' => $reason,
@@ -74,6 +108,8 @@ final class ApprovalService
                 'action' => $action->value,
                 'amount' => $amount?->toDecimal(),
                 'required_approvals' => $request->required_approvals,
+                'requires_senior_approval' => $request->requires_senior_approval,
+                'elevation_reason' => $elevation,
             ],
             organization: $organization,
             actor: $requester,
@@ -105,18 +141,53 @@ final class ApprovalService
             ]);
 
             $received = $locked->approvals_received + 1;
-            $satisfied = $received >= $locked->required_approvals;
+
+            /*
+             * A senior signature is recorded the first time someone holding
+             * that permission approves. It is a property of the request rather
+             * than of the vote, because what §25 asks for is that a senior
+             * person looked — not that they looked last.
+             */
+            $isSenior = $locked->requires_senior_approval
+                && $locked->senior_approved_at === null
+                && $approver->hasPermissionTo($locked->action_type->seniorApprovalPermission());
+
+            $seniorSatisfied = ! $locked->requires_senior_approval
+                || $locked->senior_approved_at !== null
+                || $isSenior;
+
+            /*
+             * Both conditions, not either. A request that has its two
+             * approvals but no senior signature stays pending, and the queue
+             * says so — "Finance + Senior Approval" is two different kinds of
+             * person, and treating a second finance signature as satisfying it
+             * would make the requirement decorative.
+             */
+            $satisfied = $received >= $locked->required_approvals && $seniorSatisfied;
 
             $locked->forceFill([
                 'approvals_received' => $received,
                 'status' => $satisfied ? ApprovalStatus::Approved : ApprovalStatus::Pending,
                 'resolved_at' => $satisfied ? Carbon::now() : null,
-            ])->save();
+            ]);
+
+            if ($isSenior) {
+                $locked->forceFill([
+                    'senior_approved_at' => Carbon::now(),
+                    'senior_approved_by' => $approver->getKey(),
+                ]);
+            }
+
+            $locked->save();
 
             $this->audit->record(
                 action: AuditAction::ApprovalGranted,
                 resource: $locked,
-                after: ['approvals_received' => $received, 'status' => $locked->status->value],
+                after: [
+                    'approvals_received' => $received,
+                    'status' => $locked->status->value,
+                    'senior' => $isSenior,
+                ],
                 context: ['note' => $note],
                 organization: $locked->organization()->first(),
                 actor: $approver,
@@ -201,6 +272,41 @@ final class ApprovalService
 
             return $locked;
         });
+    }
+
+    /**
+     * Why this request needs more scrutiny than its size alone asks for, or
+     * null when it does not (spec §12).
+     *
+     * A sentence rather than a flag, because it is shown to the approver: "a
+     * second approver is required" with no reason is an instruction, and an
+     * instruction nobody can evaluate is one people learn to click through.
+     *
+     * Reads the stored profile rather than reassessing. An assessment here
+     * would put a fan of queries across payments, campaigns and the ledger in
+     * front of every financial action, and would let a slow read block a
+     * refund.
+     */
+    private function riskElevation(ApprovableAction $action, ?Organization $organization): ?string
+    {
+        if ($organization === null || ! $action->isFinancial()) {
+            return null;
+        }
+
+        /** @var OrganizationRiskProfile|null $profile */
+        $profile = OrganizationRiskProfile::query()
+            ->withoutGlobalScopes()
+            ->firstWhere('organization_id', $organization->getKey());
+
+        if ($profile === null || ! $profile->requiresSecondApprover()) {
+            return null;
+        }
+
+        return sprintf(
+            'This client is %s risk (%d/100), so a financial action on it needs a second approver.',
+            strtolower($profile->level->label()),
+            $profile->score,
+        );
     }
 
     private function lockOpen(ApprovalRequest $request): ApprovalRequest

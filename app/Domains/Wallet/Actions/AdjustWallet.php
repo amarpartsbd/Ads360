@@ -59,7 +59,9 @@ final class AdjustWallet
             ]);
         }
 
-        if ($this->approvals->isRequired(ApprovableAction::WalletAdjustment, $amount)) {
+        // The organization is passed so a high-risk client raises the bar
+        // even below the size threshold (spec §12).
+        if ($this->approvals->isRequired(ApprovableAction::WalletAdjustment, $amount, $wallet->organization)) {
             return $this->approvals->request(
                 action: ApprovableAction::WalletAdjustment,
                 requester: $actor,

@@ -8,12 +8,14 @@ use App\Domains\Identity\Models\Role;
 use App\Domains\Identity\Models\User;
 use App\Domains\Tenant\Enums\TenantStatus;
 use App\Domains\Tenant\Enums\TenantType;
+use App\Domains\Tenant\Values\Branding;
 use App\Support\Concerns\HasPublicId;
 use Database\Factories\TenantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use InvalidArgumentException;
 
 /**
  * The outermost isolation boundary (spec §5).
@@ -28,6 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property TenantType $type
  * @property TenantStatus $status
  * @property array<string, mixed> $branding
+ * @property string|null $custom_domain
  * @property array<string, mixed> $settings
  */
 class Tenant extends Model
@@ -49,6 +52,7 @@ class Tenant extends Model
         'default_currency',
         'branding',
         'settings',
+        'custom_domain',
     ];
 
     /**
@@ -111,6 +115,30 @@ class Tenant extends Model
             'primary_color' => null,
             'support_email' => config('platform.support_email'),
         ], $this->branding);
+    }
+
+    /**
+     * The branding as a validated value object (spec §43).
+     *
+     * Stored branding is read back through the same object that validated it
+     * on the way in, so a document written before a rule existed — or edited
+     * by hand — cannot put an unreadable colour on a screen. Anything that no
+     * longer passes is dropped in favour of the platform default rather than
+     * rendered.
+     */
+    public function brandingValue(): Branding
+    {
+        try {
+            return Branding::fromArray($this->branding ?? []);
+        } catch (InvalidArgumentException) {
+            return Branding::none();
+        }
+    }
+
+    /** Whether this tenant is allowed to brand its own copy of the platform. */
+    public function canWhiteLabel(): bool
+    {
+        return (bool) config('platform.features.white_label');
     }
 
     protected static function newFactory(): TenantFactory
