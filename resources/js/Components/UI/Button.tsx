@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Slot } from '@radix-ui/react-slot';
+import { Slot, Slottable } from '@radix-ui/react-slot';
 import { Loader2 } from 'lucide-react';
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/Utils/cn';
@@ -46,8 +46,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 aria-busy={loading || undefined}
                 {...props}
             >
+                {/*
+                    `Slottable` marks which of these two children is the element
+                    `asChild` should merge into. Without it Slot sees two
+                    children — the spinner's slot counts even when it holds
+                    null — and throws rather than rendering, which took every
+                    screen with a linked button down with it.
+                */}
                 {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
-                {children}
+                <Slottable>{children}</Slottable>
             </Comp>
         );
     },
