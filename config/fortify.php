@@ -75,6 +75,12 @@ return [
     |
     */
 
+    /*
+     * Fortify's fallback only. Where a sign-in actually lands is decided per
+     * account by App\Http\Responses\LoginResponse and its two-factor twin,
+     * because platform staff and clients have different front doors and each is
+     * refused at the other's.
+     */
     'home' => '/app/dashboard',
 
     /*

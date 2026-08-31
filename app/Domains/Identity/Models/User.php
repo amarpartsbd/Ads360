@@ -164,6 +164,28 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->is_platform_user;
     }
 
+    /**
+     * Where this account belongs once it has signed in.
+     *
+     * The two surfaces are mutually exclusive: platform staff hold no tenant and
+     * are refused by the client application, and a client account has no
+     * business in the administration area. A single configured destination
+     * therefore cannot be right for both — it sends one of them to a page that
+     * refuses them, which is what a fresh administrator met on their first
+     * sign-in.
+     *
+     * Only the surface is decided here. Whether the account may proceed once it
+     * arrives — verified, enrolled in two-factor, holding a workspace — stays
+     * with the middleware on the route, so this cannot become a second place
+     * where access is decided.
+     */
+    public function homeRoute(): string
+    {
+        return $this->isPlatformUser()
+            ? route('admin.dashboard')
+            : route('client.dashboard');
+    }
+
     public function isLocked(): bool
     {
         return $this->locked_until !== null && $this->locked_until->isFuture();

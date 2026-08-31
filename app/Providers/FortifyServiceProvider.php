@@ -10,6 +10,8 @@ use App\Domains\Identity\Actions\UpdateUserPassword;
 use App\Domains\Identity\Actions\UpdateUserProfileInformation;
 use App\Domains\Identity\Models\User;
 use App\Domains\Identity\Services\LoginRecorder;
+use App\Http\Responses\LoginResponse;
+use App\Http\Responses\TwoFactorLoginResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +20,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
 use Laravel\Fortify\Fortify;
 
 /**
@@ -31,7 +35,14 @@ class FortifyServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        /*
+         * This platform has two front doors and no account may use both, so
+         * where a sign-in lands is a question about the account rather than a
+         * configured address. Bound in register() because Fortify resolves
+         * these the moment a login completes.
+         */
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(TwoFactorLoginResponseContract::class, TwoFactorLoginResponse::class);
     }
 
     public function boot(): void

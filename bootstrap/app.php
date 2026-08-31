@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domains\Identity\Models\User;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnforceAdminTwoFactor;
 use App\Http\Middleware\EnsurePlatformUser;
@@ -51,6 +52,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Inertia expects a redirect, not a 302-to-JSON, when the session dies.
         $middleware->redirectGuestsTo(fn (): string => route('login'));
+
+        // The other door into the same mistake: an account that is already
+        // signed in and asks for the login page is sent home, and home is not
+        // the same place for platform staff as for a client.
+        $middleware->redirectUsersTo(function (Request $request): string {
+            $user = $request->user();
+
+            return $user instanceof User ? $user->homeRoute() : route('client.dashboard');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Technical detail stays in the logs; the interface gets a page it can
