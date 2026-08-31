@@ -9,6 +9,10 @@ use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\CampaignDraft;
 use App\Domains\Advertising\Exceptions\ProviderUnavailable;
 use App\Domains\Advertising\Models\AdAccount;
+use App\Domains\Advertising\Providers\Meta\MetaAdvertisingProvider;
+use App\Domains\Advertising\Providers\Meta\MetaConfig;
+use App\Domains\Advertising\Providers\Meta\MetaErrorMapper;
+use App\Domains\Advertising\Providers\Meta\MetaGraphClient;
 use App\Domains\Campaign\Enums\BidStrategy;
 use App\Domains\Campaign\Enums\BudgetType;
 use App\Domains\Campaign\Enums\CampaignObjective;
@@ -459,6 +463,135 @@ final class MetaPublishingTest extends TestCase
         $insights = $this->metaAdapter()->campaignInsights($this->account(), '23850000000000001');
 
         $this->assertSame('CAMPAIGN_PAUSED', $insights->status);
+    }
+
+    // ------------------------------------------------------------------
+    // The platform's own grant
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function publishing_authenticates_as_the_platform_not_as_nobody(): void
+    {
+        Http::fake([
+            '*campaigns*' => Http::sequence()
+                ->push(['data' => []])
+                ->push(['id' => '23850000000000001']),
+        ]);
+
+        $this->metaAdapter()->createCampaign($this->account(), $this->campaignDraft(), 'key-1');
+
+        /*
+         * A managed ad account has no client connection behind it (spec §17),
+         * and Meta authenticates every call. An unauthenticated adapter fails
+         * every publish with an error that names nothing — and no test that
+         * only inspects request bodies would notice.
+         */
+        Http::assertSent(
+            fn (Request $request): bool => $request->method() === 'POST'
+                && $request->hasHeader('Authorization', 'Bearer test-system-user-token'),
+        );
+    }
+
+    #[Test]
+    public function every_call_in_a_publish_carries_a_credential(): void
+    {
+        Http::fake([
+            '*campaigns*' => Http::sequence()
+                ->push(['data' => []])
+                ->push(['id' => '23850000000000001']),
+        ]);
+
+        $this->metaAdapter()->createCampaign($this->account(), $this->campaignDraft(), 'key-1');
+
+        // A blanket guard rather than one assertion per call site: this is the
+        // test that fails if a tokenless client is ever reintroduced anywhere
+        // in the publishing path.
+        foreach ($this->recordedRequests() as $request) {
+            $this->assertTrue(
+                $request->hasHeader('Authorization'),
+                'A publishing call went to Meta with no credential: '.$request->url(),
+            );
+        }
+    }
+
+    #[Test]
+    public function reading_a_managed_account_uses_the_platform_grant(): void
+    {
+        Http::fake(['*' => Http::response(['account_status' => 1, 'currency' => 'BDT'])]);
+
+        // No connection: this is one of the platform's own accounts.
+        $this->metaAdapter()->accountState('act_112233');
+
+        Http::assertSent(
+            fn (Request $request): bool => $request->hasHeader('Authorization', 'Bearer test-system-user-token'),
+        );
+    }
+
+    #[Test]
+    public function the_platform_grant_is_read_once_for_a_whole_publish(): void
+    {
+        Http::fake([
+            '*campaigns*' => Http::sequence()
+                ->push(['data' => []])
+                ->push(['id' => '23850000000000001']),
+            '*' => Http::response(['success' => true]),
+        ]);
+
+        $adapter = $this->metaAdapter();
+        $adapter->createCampaign($this->account(), $this->campaignDraft(), 'key-1');
+        $adapter->setCampaignActive($this->account(), '23850000000000001', false, 'key-2');
+
+        /*
+         * Unlike Google, there is nothing to exchange — a system user token is
+         * already the access token — so this asserts the cheaper property: the
+         * same credential is used throughout, rather than one call slipping
+         * through unauthenticated.
+         */
+        foreach ($this->recordedRequests() as $request) {
+            $this->assertTrue($request->hasHeader('Authorization', 'Bearer test-system-user-token'));
+        }
+    }
+
+    #[Test]
+    public function a_missing_platform_grant_is_named_rather_than_left_as_a_meta_error(): void
+    {
+        Http::fake(['*' => Http::response(['data' => []])]);
+
+        $config = $this->metaConfig();
+
+        $withoutGrant = new MetaConfig(
+            appId: $config->appId,
+            appSecret: $config->appSecret,
+            apiVersion: $config->apiVersion,
+            graphUrl: $config->graphUrl,
+            dialogUrl: $config->dialogUrl,
+            redirectUri: $config->redirectUri,
+            scopes: $config->scopes,
+            requestTimeout: $config->requestTimeout,
+            connectTimeout: $config->connectTimeout,
+            maxAttempts: $config->maxAttempts,
+            retryDelayMilliseconds: $config->retryDelayMilliseconds,
+            webhookVerifyToken: $config->webhookVerifyToken,
+            businessId: $config->businessId,
+        );
+
+        $adapter = new MetaAdvertisingProvider(
+            $withoutGrant,
+            new MetaGraphClient($withoutGrant, new MetaErrorMapper),
+        );
+
+        try {
+            $adapter->createCampaign($this->account(), $this->campaignDraft(), 'key-1');
+            $this->fail('Publishing without a platform grant should have failed.');
+        } catch (ProviderUnavailable $exception) {
+            $this->assertStringContainsString('META_SYSTEM_USER_TOKEN', $exception->getMessage());
+
+            // The grant is gone, not Meta being slow: retrying cannot help.
+            $this->assertFalse($exception->retryable);
+        }
+
+        // And it failed before reaching Meta at all.
+        $this->assertSame([], $this->recordedRequests());
     }
 
     private function adDraft(): AdDraft

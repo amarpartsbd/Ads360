@@ -75,6 +75,16 @@ return [
         'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
 
         'business_id' => env('META_BUSINESS_ID'),
+
+        /*
+         * The platform's own grant on its own ad accounts (spec §17).
+         *
+         * A system user token from the platform's Business Manager, not a
+         * person's: a token belonging to an employee stops working the day
+         * they leave. Managed ad accounts have no client connection behind
+         * them, so without this nothing can be published to one.
+         */
+        'system_user_token' => env('META_SYSTEM_USER_TOKEN'),
     ],
 
     /*

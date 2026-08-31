@@ -23,7 +23,8 @@ spend is reconciled back against the client's ledger.
 >
 > Both provider adapters are tested against faked APIs; neither has been run
 > against the provider itself, which needs reviewed applications and real
-> credentials — see [Going live with Meta](docs/DEPLOYMENT.md) and
+> credentials — each needs the platform's own grant as well as a client's, and
+> refuses by name without one. See [Going live with Meta](docs/DEPLOYMENT.md) and
 > [Going live with Google Ads](docs/DEPLOYMENT.md). Google Ads is behind
 > `FEATURE_GOOGLE_ADS` and publishes search campaigns only; what it does not do
 > is listed in the deployment notes. The agency module is behind

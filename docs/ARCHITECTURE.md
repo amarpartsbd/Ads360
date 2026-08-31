@@ -459,6 +459,31 @@ The API version is pinned. Meta deprecates a version roughly every two years
 and changes field shapes between them; an unpinned client starts failing on a
 date nobody chose.
 
+### The platform's own grant
+
+A managed ad account has no client connection behind it (§17) — the platform
+owns it and lends it out — and Meta authenticates every call. Publishing,
+lifecycle control, insights and the health of a managed account all run as the
+platform itself, using a **system user** token from the platform's Business
+Manager.
+
+A system user rather than a person: a token belonging to an employee stops
+working the day they leave, which is the worst possible way to discover the
+difference.
+
+Unlike Google there is nothing to exchange. A system user token *is* the access
+token and does not expire on a clock, so this is a value read from configuration
+rather than a round trip. What it can do is stop working — a regenerated or
+revoked token comes back as an authentication error, which the error mapper
+already classifies as non-retryable, so the queue tells someone instead of
+hammering Meta. A missing token is reported by name rather than left to arrive
+as a 400 that explains nothing.
+
+The two kinds of credential are not interchangeable, and which one a call uses
+is decided in one place: a client's grant reaches the assets that client
+authorised, and the platform's token reaches the accounts the platform owns.
+`MetaAdvertisingProvider::platformClient()` is that place.
+
 ### What is deliberately not claimed
 
 `supports(LeadForms)` returns false. Retrieving lead data needs its own

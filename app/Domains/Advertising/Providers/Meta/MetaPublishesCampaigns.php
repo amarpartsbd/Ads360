@@ -84,7 +84,7 @@ trait MetaPublishesCampaigns
             $payload['daily_budget'] = $draft->budgetMinor;
         }
 
-        $created = $this->client->post($path.'/campaigns', $payload);
+        $created = $this->platformClient()->post($path.'/campaigns', $payload);
 
         return $this->published($created, $draft->reference);
     }
@@ -128,7 +128,7 @@ trait MetaPublishesCampaigns
             $payload['end_time'] = $draft->endsAt->format(DATE_ATOM);
         }
 
-        $created = $this->client->post($path.'/adsets', $payload);
+        $created = $this->platformClient()->post($path.'/adsets', $payload);
 
         return $this->published($created, $draft->reference);
     }
@@ -155,7 +155,7 @@ trait MetaPublishesCampaigns
         $imageHash = $this->uploadImage($path, $draft);
         $creativeId = $this->createCreative($path, $draft, $imageHash);
 
-        $created = $this->client->post($path.'/ads', [
+        $created = $this->platformClient()->post($path.'/ads', [
             'name' => $this->nameFor($draft->name, $draft->reference),
             'adset_id' => $draft->externalAdSetId,
             'creative' => json_encode(['creative_id' => $creativeId]),
@@ -172,7 +172,7 @@ trait MetaPublishesCampaigns
         string $idempotencyKey,
     ): void {
         // Repeats are harmless: Meta accepts a status it is already in.
-        $this->client->post($externalCampaignId, [
+        $this->platformClient()->post($externalCampaignId, [
             'status' => $active ? 'ACTIVE' : 'PAUSED',
         ]);
     }
@@ -187,14 +187,14 @@ trait MetaPublishesCampaigns
         string $externalCampaignId,
         string $idempotencyKey,
     ): void {
-        $this->client->post($externalCampaignId, ['status' => 'ARCHIVED']);
+        $this->platformClient()->post($externalCampaignId, ['status' => 'ARCHIVED']);
     }
 
     public function campaignInsights(AdAccount $account, string $externalCampaignId): CampaignInsights
     {
-        $status = $this->client->get($externalCampaignId, ['fields' => 'status,effective_status']);
+        $status = $this->platformClient()->get($externalCampaignId, ['fields' => 'status,effective_status']);
 
-        $rows = $this->client->get($externalCampaignId.'/insights', [
+        $rows = $this->platformClient()->get($externalCampaignId.'/insights', [
             'fields' => 'spend,impressions,clicks,actions',
             // Lifetime, because the ledger reconciles against spend-to-date
             // rather than against a window.
@@ -242,7 +242,7 @@ trait MetaPublishesCampaigns
         DateTimeImmutable $since,
         DateTimeImmutable $until,
     ): array {
-        $rows = $this->client->paginate($externalCampaignId.'/insights', [
+        $rows = $this->platformClient()->paginate($externalCampaignId.'/insights', [
             'fields' => 'date_start,spend,impressions,clicks,reach,actions,action_values',
             'time_increment' => 1,
             'time_range' => json_encode([
@@ -300,7 +300,7 @@ trait MetaPublishesCampaigns
     {
         $marker = self::REFERENCE_PREFIX.$reference;
 
-        $nodes = $this->client->paginate(
+        $nodes = $this->platformClient()->paginate(
             $edge,
             ['fields' => 'id,name,status', 'limit' => 100],
             maxPages: 3,
@@ -378,7 +378,7 @@ trait MetaPublishesCampaigns
         }
 
         try {
-            $response = $this->client->upload(
+            $response = $this->platformClient()->upload(
                 $accountPath.'/adimages',
                 'source',
                 $stream,
@@ -406,7 +406,7 @@ trait MetaPublishesCampaigns
 
     private function createCreative(string $accountPath, AdDraft $draft, string $imageHash): string
     {
-        $created = $this->client->post($accountPath.'/adcreatives', [
+        $created = $this->platformClient()->post($accountPath.'/adcreatives', [
             'name' => $this->nameFor($draft->name.' creative', $draft->reference),
             'object_story_spec' => json_encode([
                 // The client's own page, never the platform's.

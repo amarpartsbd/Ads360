@@ -68,7 +68,9 @@ trait MetaReadsAssets
     public function accountState(string $externalAccountId, ?ProviderConnection $connection = null): ProviderAccountState
     {
         $client = $connection === null
-            ? $this->client
+            // One of the platform's own accounts, reached with the platform's
+            // own system user token (spec §17).
+            ? $this->platformClient()
             : $this->client->withToken($connection->accessToken());
 
         $account = $client->get($this->accountPath($externalAccountId), [

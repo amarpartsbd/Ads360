@@ -54,6 +54,7 @@ trait FakesMetaGraph
             retryDelayMilliseconds: 0,
             webhookVerifyToken: 'test-verify-token',
             businessId: '999888777',
+            systemUserToken: 'test-system-user-token',
         );
     }
 

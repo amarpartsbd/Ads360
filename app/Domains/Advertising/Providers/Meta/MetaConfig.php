@@ -38,6 +38,20 @@ final class MetaConfig
         #[SensitiveParameter]
         public readonly ?string $webhookVerifyToken = null,
         public readonly ?string $businessId = null,
+        /**
+         * The platform's own grant on its own ad accounts.
+         *
+         * A managed ad account (spec §17) has no client connection behind it —
+         * the platform owns it and lends it out — and Meta authenticates every
+         * call. Without this, nothing can be published to one.
+         *
+         * This is a **system user** token from the platform's Business
+         * Manager, not a person's. A token belonging to an employee stops
+         * working the day they leave, which is the worst possible way to
+         * discover the difference.
+         */
+        #[SensitiveParameter]
+        public readonly ?string $systemUserToken = null,
     ) {}
 
     public static function fromConfig(): self
@@ -59,6 +73,7 @@ final class MetaConfig
             retryDelayMilliseconds: (int) ($meta['retry_delay_ms'] ?? 500),
             webhookVerifyToken: ($meta['webhook_verify_token'] ?? null) ?: null,
             businessId: ($meta['business_id'] ?? null) ?: null,
+            systemUserToken: ($meta['system_user_token'] ?? null) ?: null,
         );
     }
 
@@ -123,6 +138,7 @@ final class MetaConfig
             'api_version' => $this->apiVersion,
             'configured' => $this->isConfigured(),
             'has_webhook_token' => $this->webhookVerifyToken !== null,
+            'has_platform_grant' => $this->systemUserToken !== null,
             'scopes' => $this->scopes,
         ];
     }

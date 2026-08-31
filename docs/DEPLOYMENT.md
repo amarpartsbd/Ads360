@@ -65,15 +65,31 @@ Before switching `ADVERTISING_DRIVER` to `live`:
    without review; a development-mode app only serves its own admins.
 2. **Redirect URI.** `META_REDIRECT_URI` must match the value registered in the
    app exactly, including scheme and trailing path. Meta compares it literally.
-3. **Webhook.** Point the subscription at `https://<host>/webhooks/meta` and set
+3. **The platform's own grant.** Create a **system user** in the platform's
+   Business Manager, give it access to the managed ad accounts, and put its
+   token in `META_SYSTEM_USER_TOKEN`. Managed ad accounts have no client
+   connection behind them, so without this nothing publishes to one — the
+   adapter refuses by name rather than letting Meta return an error that
+   explains nothing.
+
+   Use a system user, never a person. A token belonging to an employee stops
+   working the day they leave, and the failure surfaces as campaigns that
+   silently stop publishing.
+4. **Webhook.** Point the subscription at `https://<host>/webhooks/meta` and set
    `META_WEBHOOK_VERIFY_TOKEN` to a long random string. The handshake fails
    closed, so a mismatch shows up immediately at subscription time.
-4. **Shakedown.** Connect one internal account, publish one small campaign
+5. **Shakedown.** Connect one internal account, publish one small campaign
    against a real ad account, and confirm three things by hand: the campaign
    appears in Ads Manager with an `[ads360:…]` suffix in its name, a second
    publish of the same campaign creates nothing new, and the spend the
    reconciler captures matches what Meta reports.
-5. **Watch the version.** `META_API_VERSION` is pinned. Meta deprecates a
+
+   Confirm one more thing while you are there: whether the app has **Require
+   App Secret** enabled. If it does, Meta expects an `appsecret_proof`
+   parameter alongside a user or system user token, and the adapter does not
+   send one yet — `MetaConfig::appSecretProof()` exists and is unused. With the
+   setting off, which is the default, nothing is needed.
+6. **Watch the version.** `META_API_VERSION` is pinned. Meta deprecates a
    version roughly every two years; the upgrade is a deliberate change with its
    own shakedown, not something to leave to a default.
 
