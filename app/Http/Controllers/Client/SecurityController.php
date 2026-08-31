@@ -27,6 +27,10 @@ final class SecurityController
 
         return Inertia::render('Client/Settings/Security', [
             'twoFactorEnabled' => $user->hasTwoFactorEnabled(),
+            // Started and not finished: a secret exists but no code has
+            // confirmed it, which is a screen of its own rather than a reason
+            // to start over and invalidate the code they have just scanned.
+            'twoFactorPending' => $user->two_factor_secret !== null,
             'sessions' => $this->sessionsFor($request, $user),
             'loginHistory' => LoginHistory::query()
                 ->where('user_id', $user->getKey())

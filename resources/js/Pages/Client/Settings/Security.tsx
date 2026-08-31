@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { CheckCircle2, Monitor, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { Badge } from '@/Components/UI/Badge';
+import { TwoFactorEnrolment } from '@/Components/Security/TwoFactorEnrolment';
 import { Button } from '@/Components/UI/Button';
 import { Card, CardBody, CardHeader } from '@/Components/UI/Card';
 import { Table, Td, Th } from '@/Components/UI/Table';
@@ -25,10 +26,13 @@ interface LoginEntry {
 
 export default function Security({
     twoFactorEnabled,
+    twoFactorPending,
     sessions,
     loginHistory,
 }: {
     twoFactorEnabled: boolean;
+    /** A secret exists but no code has confirmed it yet. */
+    twoFactorPending: boolean;
     sessions: Session[];
     loginHistory: LoginEntry[];
 }) {
@@ -73,6 +77,8 @@ export default function Security({
                     </p>
                 </CardBody>
             </Card>
+
+            <TwoFactorEnrolment enabled={twoFactorPending || twoFactorEnabled} confirmed={twoFactorEnabled} />
 
             <Card>
                 <CardHeader

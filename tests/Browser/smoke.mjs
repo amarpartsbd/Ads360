@@ -87,51 +87,38 @@ function oneTimeCode(secret) {
 }
 
 /**
- * Enrols an authenticator, which administrators must hold before the
- * administration area will serve them anything at all (spec §9).
+ * Enrols an authenticator by clicking through the screen, the way the person
+ * enrolling has to (spec §9).
  *
- * Driven through the same endpoints the interface uses, password confirmation
- * included, so an enrolment flow that stops working fails here — it is the one
- * screen an administrator cannot get past on a fresh installation.
+ * Driven through the interface rather than through Fortify's endpoints on
+ * purpose. The endpoints worked all along; what did not exist was a screen with
+ * anything on it, so an administrator was held at a page that offered them no
+ * way past it. A test that posted to the endpoints would have passed against
+ * that page, which makes it the wrong test.
  */
 async function enrolAuthenticator(page, base, password) {
-    const token = async () => {
-        const cookies = await page.context().cookies();
-        const xsrf = cookies.find((c) => c.name === 'XSRF-TOKEN');
+    await page.goto(`${base}/admin/security/two-factor`, { waitUntil: 'networkidle' });
 
-        return xsrf ? decodeURIComponent(xsrf.value) : '';
-    };
+    await page.getByRole('button', { name: /begin setup/i }).click();
 
-    const post = async (path, data) => {
-        const response = await page.request.post(`${base}${path}`, {
-            headers: {
-                'X-XSRF-TOKEN': await token(),
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            data: data ?? {},
-        });
+    // Enrolment is a privileged action, so the password is asked for again.
+    const passwordField = page.locator('input[type="password"]');
+    await passwordField.waitFor({ state: 'visible', timeout: 10000 });
+    await passwordField.fill(password);
+    await page.getByRole('button', { name: /continue/i }).click();
 
-        if (!response.ok()) {
-            throw new Error(
-                `${path} returned ${response.status()}: ${(await response.text()).slice(0, 200)}`,
-            );
-        }
+    // The secret is offered for anyone whose camera cannot manage the QR code,
+    // and this test reads it for the same reason.
+    const secretField = page.getByTestId('two-factor-secret');
+    await secretField.waitFor({ state: 'visible', timeout: 10000 });
+    const secret = (await secretField.innerText()).replace(/\s/g, '');
 
-        return response;
-    };
+    await page.getByTestId('two-factor-qr').waitFor({ state: 'visible', timeout: 10000 });
 
-    await post('/user/confirm-password', { password });
-    await post('/user/two-factor-authentication');
+    await page.locator('input[name="code"]').fill(oneTimeCode(secret));
+    await page.getByRole('button', { name: /confirm and turn on/i }).click();
 
-    const secret = await page.request
-        .get(`${base}/user/two-factor-secret-key`, {
-            headers: { Accept: 'application/json' },
-        })
-        .then((r) => r.json())
-        .then((body) => body.secretKey);
-
-    await post('/user/confirmed-two-factor-authentication', { code: oneTimeCode(secret) });
+    await page.getByText(/two-factor authentication is on/i).waitFor({ timeout: 10000 });
 }
 
 const journeys = [

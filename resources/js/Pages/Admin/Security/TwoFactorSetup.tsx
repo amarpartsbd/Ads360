@@ -1,11 +1,19 @@
+import { TwoFactorEnrolment } from '@/Components/Security/TwoFactorEnrolment';
 import { Alert } from '@/Components/UI/Alert';
-import { Card, CardBody, CardHeader } from '@/Components/UI/Card';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 /**
  * Administrators are held here until they enrol an authenticator (spec §9).
  */
-export default function TwoFactorSetup({ required }: { required: boolean }) {
+export default function TwoFactorSetup({
+    required,
+    enabled,
+    confirmed,
+}: {
+    required: boolean;
+    enabled: boolean;
+    confirmed: boolean;
+}) {
     return (
         <AdminLayout title="Two-factor authentication">
             {required ? (
@@ -15,19 +23,7 @@ export default function TwoFactorSetup({ required }: { required: boolean }) {
                 </Alert>
             ) : null}
 
-            <Card>
-                <CardHeader
-                    title="Set up your authenticator"
-                    description="Scan the code with an authenticator app, then enter the six-digit code it shows."
-                />
-                <CardBody className="space-y-4 text-sm text-muted-foreground">
-                    <p>
-                        Enrolment is handled by the account security endpoints. Once confirmed, you will be
-                        asked for a code at every sign-in, and you will receive recovery codes to store
-                        somewhere safe.
-                    </p>
-                </CardBody>
-            </Card>
+            <TwoFactorEnrolment enabled={enabled} confirmed={confirmed} required={required} />
         </AdminLayout>
     );
 }

@@ -106,6 +106,23 @@ final class SignInDestinationTest extends TestCase
         ])->assertRedirect(route('admin.clients.index'));
     }
 
+    /**
+     * The recovery codes are shown once, on this screen. It used to redirect an
+     * enrolled administrator to the dashboard, so the one moment they were
+     * available was spent on a redirect and anyone who later lost their phone
+     * had nothing to sign in with.
+     */
+    #[Test]
+    public function the_two_factor_screen_stays_reachable_once_enrolled(): void
+    {
+        $admin = $this->platformAdmin();
+        $this->enrolTwoFactor($admin);
+
+        $this->actingAs($admin)
+            ->get(route('admin.security.two-factor.setup'))
+            ->assertOk();
+    }
+
     #[Test]
     public function an_administrator_who_is_already_signed_in_is_not_sent_to_the_client_area(): void
     {
