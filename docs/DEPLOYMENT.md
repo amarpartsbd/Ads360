@@ -272,7 +272,7 @@ every installation of it. So a fresh deployment is a working platform nobody
 can sign in to until someone with shell access runs:
 
 ```bash
-php artisan ads:create-admin
+php8.4 artisan ads:create-admin
 ```
 
 It prompts for a name, an address and a password, and grants a platform role —

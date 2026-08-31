@@ -1,7 +1,9 @@
 #
 # Horizon: every queue the application uses (config/horizon.php).
 #
-# Rendered by provision.sh, which substitutes __APP_DIR__ and __APP_USER__.
+# Rendered by provision.sh, which substitutes __APP_DIR__, __APP_USER__ and
+# __PHP_BIN__ — the versioned binary, because `php` on this machine is whichever
+# of several installed versions the system default points at.
 #
 [Unit]
 Description=Ads360 Horizon queue workers
@@ -13,7 +15,7 @@ Type=simple
 User=__APP_USER__
 Group=__APP_USER__
 WorkingDirectory=__APP_DIR__
-ExecStart=/usr/bin/php __APP_DIR__/artisan horizon
+ExecStart=__PHP_BIN__ __APP_DIR__/artisan horizon
 
 # `horizon:terminate` during a deploy exits 0 once the workers have finished
 # what they were holding. That is a successful shutdown, not a crash, and

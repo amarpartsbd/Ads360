@@ -68,7 +68,7 @@ application still works after the first provisioning run.
 | `env.production.example` | Rendered to `.env` by `provision.sh`. Secrets are left blank. |
 | `nginx/app.conf` | The production vhost. TLS, redirect, asset caching. |
 | `nginx/bootstrap.conf` | HTTP-only stand-in, used until certbot has issued a certificate. |
-| `php/ads360.pool.conf` | The FPM pool: own user, own socket, sized for 4 vCPU. |
+| `php/ads360.pool.conf` | The FPM pool: own user, own socket, sized for a shared 4 vCPU box. |
 | `php/ads360.ini` | OPcache and limits, shared by FPM and the CLI. |
 | `systemd/*` | Horizon, and the scheduler timer. |
 | `sudoers/ads360-deploy` | The two commands a release needs root for, and nothing else. |
@@ -116,8 +116,14 @@ Then the release, and the first administrator:
 sudo -u ads360 -H bash /var/www/ads360/deploy/deploy.sh
 
 cd /var/www/ads360
-sudo -u ads360 -H php artisan ads:create-admin
+sudo -u ads360 -H php8.4 artisan ads:create-admin
 ```
+
+**`php8.4`, not `php`.** A server can have several PHP versions installed for
+several applications, and the bare `php` is whichever one the system default
+points at — which is not necessarily this one, and is not something to change,
+because the other applications are what it points at for. Everything the deploy
+runs uses the versioned binary for the same reason.
 
 `ads:create-admin` prompts for a name, an address and a password. There is no
 default account and no seeded password — a credential shipped with the source
@@ -162,7 +168,7 @@ leave the previous release serving, not leave the site dark.
 curl -sI https://ads.banik360.com/up          # 200, and the TLS chain resolves
 systemctl status ads360-horizon               # active (running)
 systemctl list-timers ads360-scheduler        # next run under a minute away
-sudo -u ads360 -H php /var/www/ads360/artisan horizon:status
+sudo -u ads360 -H php8.4 /var/www/ads360/artisan horizon:status
 journalctl -u ads360-horizon -n 50 --no-pager
 tail -n 50 /var/www/ads360/storage/logs/laravel-$(date +%F).log
 ```

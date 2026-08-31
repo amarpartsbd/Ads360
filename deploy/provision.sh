@@ -357,6 +357,7 @@ for unit in ads360-horizon.service ads360-scheduler.service ads360-scheduler.tim
     sed \
         -e "s|__APP_DIR__|${APP_DIR}|g" \
         -e "s|__APP_USER__|${APP_USER}|g" \
+        -e "s|__PHP_BIN__|/usr/bin/php${PHP_VERSION}|g" \
         "${HERE}/systemd/${unit}" > "/etc/systemd/system/${unit}"
 done
 systemctl daemon-reload
@@ -426,7 +427,7 @@ Next:
 
   2. Create the first administrator (there is no default account):
 
-       cd ${APP_DIR} && sudo -u ${APP_USER} php artisan ads:create-admin
+       cd ${APP_DIR} && sudo -u ${APP_USER} -H php${PHP_VERSION} artisan ads:create-admin
 
   3. Sign in at https://${APP_DOMAIN} and enrol two-factor authentication.
 

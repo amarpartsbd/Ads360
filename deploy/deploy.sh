@@ -13,6 +13,12 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/ads360}"
 PHP_VERSION="${PHP_VERSION:-8.4}"
+# The versioned binary, never the bare `php`. This server has 8.2, 8.3 and 8.4
+# installed for three different applications, and `php` is whichever one the
+# system default happens to point at — which is not ours, and which we must not
+# change, because the other two applications are what it points at for.
+PHP_BIN="${PHP_BIN:-/usr/bin/php${PHP_VERSION}}"
+COMPOSER_BIN="${COMPOSER_BIN:-/usr/local/bin/composer}"
 
 cd "${APP_DIR}"
 
@@ -20,6 +26,7 @@ say() { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
 
 [[ -f artisan ]] || { echo "No artisan in ${APP_DIR}." >&2; exit 1; }
 [[ -f .env ]] || { echo "No .env in ${APP_DIR}. Run provision.sh first." >&2; exit 1; }
+[[ -x "${PHP_BIN}" ]] || { echo "${PHP_BIN} not found. Run provision.sh first." >&2; exit 1; }
 
 # Read after the cd, and defaults to the branch this checkout is already on, so
 # a deploy redeploys what is deployed. Naming a branch here would be a guess,
@@ -36,11 +43,11 @@ if [[ -f vendor/autoload.php ]]; then
 
     # `up` runs even if a step below fails: a failed deploy that leaves the site
     # dark is a worse outcome than a failed deploy on the previous release.
-    cleanup() { php artisan up >/dev/null 2>&1 || true; }
+    cleanup() { "${PHP_BIN}" artisan up >/dev/null 2>&1 || true; }
     trap cleanup EXIT
 
     say "Entering maintenance mode"
-    php artisan down --retry=15 --secret="${PREVIEW_SECRET}"
+    "${PHP_BIN}" artisan down --retry=15 --secret="${PREVIEW_SECRET}"
 else
     say "First deploy — nothing is serving yet, so maintenance mode is skipped"
 fi
@@ -51,14 +58,14 @@ git switch "${REPO_BRANCH}" 2>/dev/null || git checkout "${REPO_BRANCH}"
 git reset --hard "origin/${REPO_BRANCH}"
 
 say "Installing PHP dependencies"
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+"${PHP_BIN}" "${COMPOSER_BIN}" install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 say "Ensuring an application key exists"
 # Generated on the box, once. The key decrypts every session, every encrypted
 # column and every provider token in the database, so regenerating it on an
 # existing installation makes all of them unreadable.
 if ! grep -qE '^APP_KEY=.+$' .env; then
-    php artisan key:generate --force
+    "${PHP_BIN}" artisan key:generate --force
 fi
 
 say "Building assets"
@@ -68,18 +75,18 @@ npm run build
 say "Migrating"
 # Migrations are written to be backward compatible with the running release, so
 # this can be rolled back without restoring the database.
-php artisan migrate --force
+"${PHP_BIN}" artisan migrate --force
 
 say "Seeding roles, permissions and pricing"
 # Idempotent, and it is what picks up a permission added by this release.
-php artisan db:seed --force
+"${PHP_BIN}" artisan db:seed --force
 
 say "Rebuilding caches"
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
-php artisan storage:link 2>/dev/null || true
+"${PHP_BIN}" artisan config:cache
+"${PHP_BIN}" artisan route:cache
+"${PHP_BIN}" artisan view:cache
+"${PHP_BIN}" artisan event:cache
+"${PHP_BIN}" artisan storage:link 2>/dev/null || true
 
 say "Reloading PHP-FPM"
 # OPcache runs with validate_timestamps=0, so without this the pool keeps
@@ -96,7 +103,7 @@ sudo systemctl restart ads360-horizon.service
 sudo systemctl restart ads360-scheduler.timer
 
 say "Leaving maintenance mode"
-php artisan up
+"${PHP_BIN}" artisan up
 trap - EXIT
 
 say "Deployed $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"

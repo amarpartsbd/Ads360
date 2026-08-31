@@ -6,7 +6,9 @@
 # without anything having to restart it. The scheduled commands themselves only
 # queue work — see docs/DEPLOYMENT.md — so this process is short-lived.
 #
-# Rendered by provision.sh, which substitutes __APP_DIR__ and __APP_USER__.
+# Rendered by provision.sh, which substitutes __APP_DIR__, __APP_USER__ and
+# __PHP_BIN__ — the versioned binary, because `php` on this machine is whichever
+# of several installed versions the system default points at.
 #
 [Unit]
 Description=Ads360 scheduled tasks
@@ -17,7 +19,7 @@ Type=oneshot
 User=__APP_USER__
 Group=__APP_USER__
 WorkingDirectory=__APP_DIR__
-ExecStart=/usr/bin/php __APP_DIR__/artisan schedule:run
+ExecStart=__PHP_BIN__ __APP_DIR__/artisan schedule:run
 
 NoNewPrivileges=true
 PrivateTmp=true
