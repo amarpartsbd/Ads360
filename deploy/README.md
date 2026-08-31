@@ -29,6 +29,27 @@ one box, from bare to serving.
 The application runs as the `ads360` user, not `www-data`. nginx reads `public/`
 and connects to a socket; it cannot read `.env` or write application code.
 
+## Sharing a server
+
+`provision.sh` is written to add to a machine rather than to own one, because
+the machine it was first run on was already serving something else. It adds an
+nginx vhost, a PHP-FPM pool, a database, a user and two systemd units, and
+removes nothing it did not create:
+
+- the nginx **default site is left in place**, and neither vhost here claims
+  `default_server` — nginx routes by `server_name`, and two default servers is
+  a configuration nginx refuses to start;
+- the stock **`www` PHP-FPM pool is left in place**;
+- **Redis is restarted only if its config actually changed**, and this
+  application uses databases 3 and 4 so it shares the server without sharing a
+  keyspace;
+- the **firewall is not enabled** unless it already was, or `MANAGE_FIREWALL=yes`
+  is passed. Turning one on for the first time cuts off every port not named in
+  the rules, and the script prints what is currently listening so that decision
+  is made with the list in front of you.
+
+It prints what it found running before it changes anything.
+
 ## Files
 
 | File | What it is |

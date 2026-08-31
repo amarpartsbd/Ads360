@@ -37,6 +37,21 @@ die() { printf '\n\033[1;31mError:\033[0m %s\n' "$*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "Run this as root."
 
 # ---------------------------------------------------------------------------
+# What is already here
+# ---------------------------------------------------------------------------
+#
+# This script is written to share a server rather than to own one: it adds an
+# nginx vhost, a PHP-FPM pool and two systemd units, and removes nothing it did
+# not create. The summary is printed because a provisioning script that silently
+# rearranges a box someone is already serving from is how outages happen.
+
+say "Looking at what is already running"
+printf '    nginx vhosts:  %s\n' "$(ls /etc/nginx/sites-enabled 2>/dev/null | tr '\n' ' ' || echo none)"
+printf '    PHP-FPM:       %s\n' "$(systemctl list-units --type=service --state=running --no-legend 'php*-fpm*' 2>/dev/null | awk '{print $1}' | tr '\n' ' ' || echo none)"
+printf '    Other apps:    %s\n' "$(systemctl list-units --type=service --state=running --no-legend 2>/dev/null | awk '{print $1}' | grep -Ev '^(systemd|dbus|cron|ssh|rsyslog|polkit|networkd|resolved|user@|getty|unattended|snapd|multipathd|udisks|ModemManager|irqbalance|chrony|qemu|serial-getty)' | tr '\n' ' ')"
+echo
+
+# ---------------------------------------------------------------------------
 # Packages
 # ---------------------------------------------------------------------------
 
@@ -96,14 +111,21 @@ chmod 755 "${APP_DIR}"
 say "Preparing a deploy key for GitHub"
 SSH_DIR="${APP_DIR}/.ssh"
 mkdir -p "${SSH_DIR}"
-chmod 700 "${SSH_DIR}"
+
+# Everything here is written as root and handed over at the end. Writing it as
+# the application user instead would need the directory to be theirs first, and
+# getting that order wrong fails at exactly this step.
 if [[ ! -f "${SSH_DIR}/id_ed25519" ]]; then
-    sudo -u "${APP_USER}" -H ssh-keygen -t ed25519 -N '' -C "${APP_USER}@${APP_DOMAIN}" \
+    ssh-keygen -t ed25519 -N '' -C "${APP_USER}@${APP_DOMAIN}" \
         -f "${SSH_DIR}/id_ed25519" >/dev/null
 fi
-sudo -u "${APP_USER}" -H ssh-keyscan -t ed25519 github.com >> "${SSH_DIR}/known_hosts" 2>/dev/null
+ssh-keyscan -t ed25519 github.com >> "${SSH_DIR}/known_hosts" 2>/dev/null
 sort -u "${SSH_DIR}/known_hosts" -o "${SSH_DIR}/known_hosts"
+
 chown -R "${APP_USER}:${APP_USER}" "${SSH_DIR}"
+chmod 700 "${SSH_DIR}"
+chmod 600 "${SSH_DIR}/id_ed25519" "${SSH_DIR}/known_hosts"
+chmod 644 "${SSH_DIR}/id_ed25519.pub"
 
 # ---------------------------------------------------------------------------
 # PostgreSQL
@@ -146,9 +168,13 @@ say "Configuring Redis"
 # No maxmemory and no eviction policy on purpose: this instance holds the queue
 # as well as the cache, and an evicted queue key is a job that silently never
 # runs. Cache pressure is bounded by the box, and the box has room.
-sed -i 's/^# *supervised .*/supervised systemd/' /etc/redis/redis.conf
 systemctl enable --now redis-server
-systemctl restart redis-server
+if grep -qE '^# *supervised ' /etc/redis/redis.conf; then
+    sed -i 's/^# *supervised .*/supervised systemd/' /etc/redis/redis.conf
+    # Restarted only when the file actually changed: anything else on this box
+    # using Redis loses its connections for the moment this takes.
+    systemctl restart redis-server
+fi
 
 # ---------------------------------------------------------------------------
 # PHP-FPM
@@ -158,8 +184,9 @@ say "Configuring the PHP-FPM pool"
 install -m 644 "${HERE}/php/ads360.pool.conf" "/etc/php/${PHP_VERSION}/fpm/pool.d/ads360.conf"
 install -m 644 "${HERE}/php/ads360.ini" "/etc/php/${PHP_VERSION}/fpm/conf.d/99-ads360.ini"
 install -m 644 "${HERE}/php/ads360.ini" "/etc/php/${PHP_VERSION}/cli/conf.d/99-ads360.ini"
-# The default pool would answer on the same socket name space for no reason.
-rm -f "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
+# The stock `www` pool is left in place. It listens on its own socket and no
+# vhost here routes to it, so it costs a few megabytes; removing it would break
+# anything else on this box that happens to use PHP-FPM.
 systemctl enable "php${PHP_VERSION}-fpm"
 systemctl restart "php${PHP_VERSION}-fpm"
 
@@ -219,7 +246,9 @@ say "Configuring nginx"
 mkdir -p /var/www/letsencrypt
 chown -R www-data:www-data /var/www/letsencrypt
 
-rm -f /etc/nginx/sites-enabled/default
+# The default site is deliberately left alone. This server may already be
+# serving something, and nginx routes by server_name — a vhost for one hostname
+# does not need another hostname's vhost removed to work.
 
 render_vhost() {
     sed \
@@ -285,19 +314,43 @@ visudo -c -f /etc/sudoers.d/ads360-deploy >/dev/null || die "Refusing to leave a
 # ---------------------------------------------------------------------------
 
 say "Configuring the firewall"
-# PostgreSQL and Redis are reached over the loopback only and are deliberately
-# absent from this list.
-#
 # The SSH port is read from the running configuration rather than assumed to be
-# 22: enabling a firewall that does not allow the port you are connected on
-# locks you out of the server, and the rule is applied before ufw is enabled.
+# 22: a firewall that does not allow the port you are connected on locks you out
+# of the server.
 SSH_PORT="$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')"
 SSH_PORT="${SSH_PORT:-22}"
-echo "    Allowing SSH on port ${SSH_PORT}."
+
+# PostgreSQL and Redis are reached over the loopback only and are deliberately
+# absent from these rules.
 ufw allow "${SSH_PORT}/tcp" >/dev/null
 ufw allow 'Nginx Full' >/dev/null
-ufw --force enable >/dev/null
-ufw status verbose
+
+if ufw status | grep -q '^Status: active'; then
+    echo "    Already active; allowed SSH on ${SSH_PORT} and HTTP/HTTPS."
+    ufw status verbose
+elif [[ "${MANAGE_FIREWALL:-}" == "yes" ]]; then
+    ufw --force enable >/dev/null
+    ufw status verbose
+else
+    # Not enabled on our own initiative. Turning a firewall on for the first
+    # time cuts off every port not named above, and this box may be serving
+    # something on one of them — which is not a thing to discover by doing it.
+    cat <<EOF
+
+    The firewall is off and has been LEFT off. The rules for SSH (${SSH_PORT})
+    and HTTP/HTTPS are staged but not enforced.
+
+    Anything else on this server currently listening on a public port:
+
+$(ss -tlnp 2>/dev/null | awk 'NR>1 && $4 !~ /127\.0\.0\.1|\[::1\]/ {print "      " $4 "  " $6}' | sort -u)
+
+    If nothing there needs to stay reachable, enable it with:
+
+      ufw allow <any other port you need>/tcp
+      ufw enable
+
+EOF
+fi
 
 say "Provisioned."
 cat <<EOF
