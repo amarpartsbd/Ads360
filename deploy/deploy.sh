@@ -26,22 +26,29 @@ say() { printf '\n\033[1;35m==>\033[0m %s\n' "$*"; }
 # and the wrong guess is a `git reset --hard` onto somebody else's work.
 REPO_BRANCH="${REPO_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 
+# Maintenance mode before the code changes, not after — but artisan needs the
+# framework to run at all, and a first deploy has no vendor/ yet. There is also
+# nothing to protect on a first deploy, because nothing is serving.
+if [[ -f vendor/autoload.php ]]; then
+    # The secret makes the new release previewable through the maintenance page
+    # while it is still down for everyone else.
+    PREVIEW_SECRET="$(openssl rand -hex 16)"
+
+    # `up` runs even if a step below fails: a failed deploy that leaves the site
+    # dark is a worse outcome than a failed deploy on the previous release.
+    cleanup() { php artisan up >/dev/null 2>&1 || true; }
+    trap cleanup EXIT
+
+    say "Entering maintenance mode"
+    php artisan down --retry=15 --secret="${PREVIEW_SECRET}"
+else
+    say "First deploy — nothing is serving yet, so maintenance mode is skipped"
+fi
+
 say "Fetching ${REPO_BRANCH}"
 git fetch --prune origin "${REPO_BRANCH}"
 git switch "${REPO_BRANCH}" 2>/dev/null || git checkout "${REPO_BRANCH}"
 git reset --hard "origin/${REPO_BRANCH}"
-
-# The secret makes the new release previewable through the maintenance page
-# while it is still down for everyone else.
-PREVIEW_SECRET="$(openssl rand -hex 16)"
-
-# `up` runs even if a step below fails: a failed deploy that leaves the site
-# dark is a worse outcome than a failed deploy on the previous release.
-cleanup() { php artisan up >/dev/null 2>&1 || true; }
-trap cleanup EXIT
-
-say "Entering maintenance mode"
-php artisan down --retry=15 --secret="${PREVIEW_SECRET}"
 
 say "Installing PHP dependencies"
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
@@ -80,10 +87,13 @@ say "Reloading PHP-FPM"
 # a visitor can see. The sudoers rule allows exactly this command.
 sudo systemctl reload "php${PHP_VERSION}-fpm"
 
-say "Restarting workers"
-# Horizon finishes the job in hand before exiting, so nothing is interrupted
-# mid-flight; systemd restarts it on the new code.
-php artisan horizon:terminate
+say "Starting the workers and the scheduler"
+# `restart` rather than `horizon:terminate`, because this also has to *start*
+# them: provision.sh enables both units but cannot start them, since neither can
+# run until a release exists. systemd sends SIGTERM, which Horizon handles by
+# finishing the job in hand before it exits, so nothing is interrupted midway.
+sudo systemctl restart ads360-horizon.service
+sudo systemctl restart ads360-scheduler.timer
 
 say "Leaving maintenance mode"
 php artisan up

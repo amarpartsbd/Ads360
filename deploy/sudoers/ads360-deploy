@@ -14,3 +14,4 @@
 #
 __APP_USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl reload php__PHP_VERSION__-fpm
 __APP_USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl restart ads360-horizon.service
+__APP_USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl restart ads360-scheduler.timer
