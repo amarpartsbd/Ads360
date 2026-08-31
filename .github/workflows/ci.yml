@@ -117,6 +117,68 @@ jobs:
             - name: Financial concurrency gate
               run: php artisan test --group=concurrency
 
+    browser:
+        name: Browser smoke test
+        runs-on: ubuntu-latest
+
+        # The rest of the suite proves the server returns the right thing and
+        # never executes React. Three faults reached production through that gap
+        # — a policy that blocked the page's own script, a component that threw
+        # before rendering, and a sign-in that landed administrators on a page
+        # refusing them — so this job opens the pages in a browser.
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_DB: ads360
+                    POSTGRES_USER: ads360
+                    POSTGRES_PASSWORD: ads360
+                ports: ['5432:5432']
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+            redis:
+                image: redis:7
+                ports: ['6379:6379']
+                options: >-
+                    --health-cmd "redis-cli ping"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: pdo_pgsql, pgsql, redis, intl, zip, gd, bcmath
+                  coverage: none
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+
+            - name: Install dependencies
+              run: |
+                  composer install --no-interaction --prefer-dist --no-progress
+                  npm ci
+
+            - name: Prepare environment
+              run: |
+                  cp .env.example .env
+                  php artisan key:generate
+
+            - name: Install Chromium
+              run: npx playwright install --with-deps chromium
+
+            - name: Seed, build, serve and open every page
+              run: bash tests/Browser/run.sh
+
     security:
         name: Security checks
         runs-on: ubuntu-latest

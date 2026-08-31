@@ -263,6 +263,19 @@ Named here so nobody goes looking for them:
 There is deliberately no partial implementation of any of them to mistake for a
 finished one.
 
+## After deploying
+
+`/up` says the framework is alive; it says nothing about whether the interface
+renders. Point the browser smoke test at the deployment before calling it done:
+
+```bash
+npm run test:browser -- --url=https://ads.banik360.com
+```
+
+It needs the demo fixtures to sign in with, so it belongs against staging rather
+than production. On production the equivalent is opening the administration area
+by hand and watching the browser console.
+
 ## The first administrator
 
 A production deployment seeds permissions, roles and pricing, and no people.

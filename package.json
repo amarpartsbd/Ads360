@@ -9,7 +9,9 @@
         "lint": "eslint resources/js --max-warnings=0",
         "format": "prettier --write resources/js",
         "format:check": "prettier --check resources/js",
-        "types": "tsc --noEmit"
+        "types": "tsc --noEmit",
+        "test:browser": "node tests/Browser/smoke.mjs",
+        "test:browser:full": "bash tests/Browser/run.sh"
     },
     "devDependencies": {
         "@eslint/js": "^9.18.0",
@@ -21,6 +23,7 @@
         "eslint-plugin-react-hooks": "^5.1.0",
         "globals": "^15.14.0",
         "laravel-vite-plugin": "^1.2.0",
+        "playwright": "^1.62.1",
         "prettier": "^3.4.2",
         "prettier-plugin-tailwindcss": "^0.6.10",
         "typescript": "^5.7.3",

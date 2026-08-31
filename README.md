@@ -113,7 +113,22 @@ npm run build        # typecheck and production build
 npm run types        # TypeScript only
 npm run lint         # ESLint
 npm run format       # Prettier
+npm run test:browser:full  # seed, build, serve, open every page in Chromium
 ```
+
+The browser smoke test is the gate the others cannot be. Everything else checks
+the code without running the interface: PHPUnit never executes React, and `tsc`,
+ESLint and the Vite build all accept code that throws on the first render. Three
+faults reached production through that gap — a content security policy that
+blocked the page's own inline script, a button that threw before rendering
+anything, and a sign-in that landed administrators on a page refusing them —
+and all three were obvious the moment a browser opened the page.
+
+So `tests/Browser/smoke.mjs` signs in as a platform administrator and as a
+client, enrols an authenticator the way an administrator has to, and opens every
+main screen. A page fails if anything is logged as an error, if anything throws,
+if React does not mount, or if it redirects somewhere else. `run.sh` seeds,
+builds and serves first; point `--url` at a running server to skip that.
 
 Static analysis runs at **PHPStan level 6 with Larastan**, and the tree is clean
 at that level — `composer analyse` reporting anything is a regression, not a
