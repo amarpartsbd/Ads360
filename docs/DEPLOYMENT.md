@@ -263,6 +263,40 @@ Named here so nobody goes looking for them:
 There is deliberately no partial implementation of any of them to mistake for a
 finished one.
 
+## The first administrator
+
+A production deployment seeds permissions, roles and pricing, and no people.
+`DemoDataSeeder` is the only seeder that creates users and is deliberately
+development-only: a password shipped with the application is a password on
+every installation of it. So a fresh deployment is a working platform nobody
+can sign in to until someone with shell access runs:
+
+```bash
+php artisan ads:create-admin
+```
+
+It prompts for a name, an address and a password, and grants a platform role —
+`super-admin` unless `--role` says otherwise. The password is prompted for
+rather than accepted as an option, so it stays out of shell history and out of
+the process list, and it is held to the same policy as everyone else's.
+
+The account is created verified, because the person running it already had root
+on the server and there is nobody left for an emailed link to prove anything
+to. It is not created exempt from two-factor: with `ADMIN_REQUIRE_TWO_FACTOR`
+on, the first sign-in stops at the enrolment page.
+
+## Single-node deployment
+
+`deploy/` holds a complete provisioning and release setup for one Ubuntu 24.04
+server — nginx, a dedicated PHP-FPM pool, PostgreSQL, Redis, Horizon and the
+scheduler under systemd, TLS from Let's Encrypt, and a firewall. See
+[`deploy/README.md`](../deploy/README.md).
+
+It is the topology at the top of this file collapsed onto one box: the same
+services, none of the redundancy. What it gives up is stated there rather than
+implied — there is no failover, and a snapshot of the disk is not a consistent
+database backup.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production
@@ -279,17 +313,25 @@ credentials or private keys. CI fails the build if a `.env` file is tracked.
 
 ## Release
 
+On a single node this is `deploy/deploy.sh`, which does the following and puts
+maintenance mode back off even when a step fails:
+
 ```bash
-php artisan down --render="errors::503"
+php artisan down --retry=15 --secret="$(openssl rand -hex 16)"
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
+php artisan db:seed --force       # permissions and roles this release adds
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+sudo systemctl reload php8.4-fpm  # OPcache does not revalidate timestamps
 php artisan horizon:terminate     # workers restart with the new code
 php artisan up
 ```
+
+The `--secret` makes the new release previewable at `https://<host>/<secret>`
+while it is still down for everyone else.
 
 Migrations must be backward compatible with the running release, so a
 deployment can be rolled back without a database restore. Add a column before

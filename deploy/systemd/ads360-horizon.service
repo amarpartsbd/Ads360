@@ -1,0 +1,43 @@
+#
+# Horizon: every queue the application uses (config/horizon.php).
+#
+# Rendered by provision.sh, which substitutes __APP_DIR__ and __APP_USER__.
+#
+[Unit]
+Description=Ads360 Horizon queue workers
+After=network.target postgresql.service redis-server.service
+Requires=redis-server.service
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+ExecStart=/usr/bin/php __APP_DIR__/artisan horizon
+
+# `horizon:terminate` during a deploy exits 0 once the workers have finished
+# what they were holding. That is a successful shutdown, not a crash, and
+# systemd brings it straight back on the new code.
+Restart=always
+RestartSec=3
+
+# Horizon supervises its own workers; killing only the main process would
+# orphan them and leave two generations consuming the same queues.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+# Hardening. The application writes to storage/ and reads its own tree; it has
+# no business anywhere else on the filesystem.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=__APP_DIR__/storage __APP_DIR__/bootstrap/cache
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ads360-horizon
+
+[Install]
+WantedBy=multi-user.target

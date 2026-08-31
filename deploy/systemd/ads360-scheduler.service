@@ -1,0 +1,30 @@
+#
+# One pass of Laravel's scheduler, fired every minute by ads360-scheduler.timer.
+#
+# `schedule:run` rather than `schedule:work`: a timer that starts a fresh process
+# each minute cannot drift, cannot leak, and picks up new code on the next tick
+# without anything having to restart it. The scheduled commands themselves only
+# queue work — see docs/DEPLOYMENT.md — so this process is short-lived.
+#
+# Rendered by provision.sh, which substitutes __APP_DIR__ and __APP_USER__.
+#
+[Unit]
+Description=Ads360 scheduled tasks
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=oneshot
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+ExecStart=/usr/bin/php __APP_DIR__/artisan schedule:run
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=__APP_DIR__/storage __APP_DIR__/bootstrap/cache
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ads360-scheduler

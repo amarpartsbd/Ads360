@@ -1,0 +1,18 @@
+#
+# Fires ads360-scheduler.service every minute, which is the cadence Laravel's
+# scheduler expects: it decides for itself which of the entries in
+# routes/console.php are due on any given tick.
+#
+[Unit]
+Description=Run the Ads360 scheduler every minute
+
+[Timer]
+OnCalendar=*:0/1
+# A missed minute — a reboot, a long deploy — runs once on the way back up
+# rather than being skipped. Every scheduled command is withoutOverlapping()
+# and onOneServer(), so a late tick cannot collide with a running one.
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,16 @@
+#
+# The two privileged things a deploy needs, and nothing else.
+#
+# OPcache runs with validate_timestamps=0, so PHP-FPM keeps serving the previous
+# release's compiled code until it is reloaded — a deploy that skipped this
+# would report success and change nothing a visitor could see.
+#
+# Written as exact commands rather than `systemctl *`: a wildcard here would let
+# the application user stop the firewall or start a service of its own choosing,
+# which is most of the way to root on this box.
+#
+# Rendered by provision.sh, which substitutes __APP_USER__ and __PHP_VERSION__.
+# Installed to /etc/sudoers.d/ads360-deploy with mode 0440.
+#
+__APP_USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl reload php__PHP_VERSION__-fpm
+__APP_USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl restart ads360-horizon.service
