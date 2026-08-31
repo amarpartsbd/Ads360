@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Console\Commands\CheckAdAccountsCommand;
 use App\Console\Commands\CheckProviderConnectionsCommand;
+use App\Console\Commands\IngestCampaignMetricsCommand;
+use App\Console\Commands\PruneReportExportsCommand;
+use App\Console\Commands\ReconcileSpendCommand;
 use App\Console\Commands\SyncCampaignSpendCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -40,5 +43,33 @@ Schedule::command(CheckAdAccountsCommand::class)
  */
 Schedule::command(SyncCampaignSpendCommand::class)
     ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/*
+ * Analytics and reconciliation (spec §38, §78).
+ *
+ * Both run on the analytics queue, which is the lowest priority band: these
+ * figures are what a client is shown, and must never delay publishing or the
+ * spend capture a client is charged by (spec §28).
+ *
+ * Ingestion runs hourly and re-reads a trailing window, because providers
+ * restate past days as attribution windows close. Reconciliation runs daily,
+ * once the day's restatements have mostly settled.
+ */
+Schedule::command(IngestCampaignMetricsCommand::class)
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command(ReconcileSpendCommand::class)
+    ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Expired report files are removed daily; the record of who exported what
+// stays (spec §39, §55).
+Schedule::command(PruneReportExportsCommand::class)
+    ->dailyAt('04:00')
     ->withoutOverlapping()
     ->onOneServer();

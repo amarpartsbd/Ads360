@@ -18,6 +18,7 @@ app/
 │   ├── Billing/        Pricing, exchange rates, invoices
 │   ├── Advertising/    Provider abstraction, managed ad accounts, pools
 │   ├── Campaign/       Campaigns, ad sets, ads, creatives, publishing
+│   ├── Analytics/      Daily metrics, reconciliation, reports and exports
 │   ├── Integration/    Provider connections, OAuth state, connected assets
 │   ├── Audit/          Immutable audit trail and secret redaction
 │   ├── System/         Platform settings and feature flags
@@ -480,7 +481,78 @@ signature proves it came from Meta, not that it is the whole truth — so a
 webhook never moves money. It makes the platform *look sooner*; the reconciler
 asks Meta directly and compares against what it has already captured.
 
-## 16. Money
+## 16. Analytics and reconciliation
+
+`app/Domains/Analytics/`. Two pipelines that look similar and answer different
+questions: what a client is *shown*, and what a client is *charged*. They are
+kept apart on purpose, and then compared.
+
+### Providers restate, so ingestion upserts
+
+A conversion attributed three days after the click lands on the day of the
+click. Spend settles late as auctions clear. **A day is not final when it
+ends.** Two consequences shape the whole pipeline:
+
+- Each run re-reads a **trailing window**, not just yesterday. Asking only
+  about the newest day would leave every restatement of an older one
+  permanently wrong.
+- Rows are **upserted on (campaign, date)**, never appended. A pipeline that
+  inserted would show a client the same day several times and a total that grew
+  every hour. The unique index is what guarantees it; the ingestor uses that
+  index rather than fighting it.
+
+A day the provider reported nothing for is skipped, not stored as zeroes.
+Zeroes claim a campaign ran and achieved nothing; the truth is that nobody has
+finished counting (§87).
+
+### Reconciliation reports; it does not adjust
+
+The platform holds two independent accounts of the same money: what the
+provider says was spent (summed from the daily rows) and what was actually
+drawn from the wallet. `SpendReconciler` compares them.
+
+**It never moves money.** A discrepancy past tolerance is recorded and raised
+for a person; correcting it is a wallet adjustment with its own approval (§25).
+A scheduled job with unattended write access to client funds is exactly what
+that control exists to prevent.
+
+Two details worth keeping:
+
+- **Balanced results are recorded too.** "We checked and they agreed" is what
+  an auditor asks for; a table holding only problems cannot distinguish a clean
+  month from an unchecked one.
+- **Tolerance is both absolute and proportional**, and a variance must clear
+  both to be raised. A floor alone flags every large campaign; a percentage
+  alone ignores a real problem on a small one.
+
+The comparison is lifetime rather than per-day, because a restatement moves
+spend *between* days without changing the total — a per-day check would raise a
+discrepancy for something that is not one.
+
+### Derived figures are computed once, on the server
+
+Click-through rate, cost per click, cost per mille, return on ad spend: each is
+a ratio of two stored integers, computed in `PerformanceTotals` with an
+explicit guard for a zero denominator. A rate with nothing to divide by is
+**null, not zero** — "0%" says a campaign performed badly, where the truth is
+that it has not run.
+
+Nothing derived is stored. A stored rate would be a third number that could
+disagree with the two it came from.
+
+### Exports
+
+Generated on the reports queue, written to a private disk, fetched through an
+authorised and audited route, and removed after a week — an export is a
+snapshot of a client's spend and conversions, and should not outlive the reason
+it was made.
+
+Every cell is escaped against **CSV injection**: a campaign name is whatever a
+client typed, and a spreadsheet evaluates a cell beginning with `=`, `+`, `-`
+or `@`. Quoting protects the file's structure, not the spreadsheet that opens
+it, so such values are prefixed to force them to be read as text.
+
+## 17. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -490,7 +562,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 17. Conventions
+## 18. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -514,9 +586,9 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 18. Reserved domains
+## 19. Reserved domains
 
-`Agency`, `Analytics`, `Notification`, `Support` exist as empty directories.
+`Agency`, `Notification`, `Support` exist as empty directories.
 `Creative` holds the lean library the campaign engine needs; approval workflows
 and versioning arrive with the creative module proper. The structure is declared up front so modules land
 in the right place, but nothing is built until its phase.
@@ -525,7 +597,7 @@ The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 19. Adding a module
+## 20. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

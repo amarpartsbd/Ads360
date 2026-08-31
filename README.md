@@ -8,16 +8,17 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 5 complete.** Authentication, tenancy, RBAC, audit logging,
+> **Status: Phase 6 complete.** Authentication, tenancy, RBAC, audit logging,
 > business verification (KYC), team management, the wallet, ledger, pricing,
 > exchange rate, deposit and invoice modules, the advertising provider
-> abstraction with managed ad account inventory, the campaign engine, and a
-> live Meta adapter with signed webhooks are in place and covered by tests.
+> abstraction with managed ad account inventory, the campaign engine, a live
+> Meta adapter with signed webhooks, and the analytics pipeline with spend
+> reconciliation and report exports are in place and covered by tests.
 >
 > The Meta adapter is tested against a faked Graph API; it has not been run
 > against Meta itself, which needs a reviewed app and real credentials — see
-> [Going live with Meta](docs/DEPLOYMENT.md). Analytics and reporting are not
-> yet built — see [Roadmap](#roadmap).
+> [Going live with Meta](docs/DEPLOYMENT.md). The agency module and white-label
+> work are not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -165,8 +166,8 @@ Phases follow the platform specification.
 | 3     | Provider abstraction, connected assets, ad account pools    | Complete    |
 | 4     | Campaign builder, approval workflow, allocation, publishing | Complete    |
 | 5     | Meta integration                                            | Complete    |
-| 6     | Analytics pipeline, reporting, reconciliation               | Next        |
-| 7     | Google Ads                                                  | Planned     |
+| 6     | Analytics pipeline, reporting, reconciliation               | Complete    |
+| 7     | Google Ads                                                  | Next        |
 | 8     | Agency and reseller module                                  | Planned     |
 | 9     | White label, advanced risk, AI assistance, enterprise APIs  | Planned     |
 

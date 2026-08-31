@@ -9,6 +9,7 @@ use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\AuthorizationRequest;
 use App\Domains\Advertising\DTOs\CampaignDraft;
 use App\Domains\Advertising\DTOs\CampaignInsights;
+use App\Domains\Advertising\DTOs\DailyInsightRow;
 use App\Domains\Advertising\DTOs\DiscoveredAsset;
 use App\Domains\Advertising\DTOs\ProviderAccountState;
 use App\Domains\Advertising\DTOs\ProviderCredentials;
@@ -18,6 +19,7 @@ use App\Domains\Advertising\Enums\ProviderCapability;
 use App\Domains\Advertising\Exceptions\ProviderUnavailable;
 use App\Domains\Advertising\Models\AdAccount;
 use App\Domains\Integration\Models\ProviderConnection;
+use DateTimeImmutable;
 
 /**
  * One advertising platform (spec §26).
@@ -173,4 +175,28 @@ interface AdvertisingProvider
      * @throws ProviderUnavailable
      */
     public function campaignInsights(AdAccount $account, string $externalCampaignId): CampaignInsights;
+
+    /**
+     * Day-by-day performance for a campaign over a window (spec §38, §78).
+     *
+     * Separate from `campaignInsights()` because the two answer different
+     * questions. That one asks "how much has this spent in total", which is
+     * what the ledger reconciles against. This one asks "what happened on each
+     * day", which is what a client's chart is drawn from — and providers
+     * restate past days as attribution windows close, so a caller re-fetches a
+     * trailing window rather than only asking about yesterday.
+     *
+     * Dates in the returned rows are the provider's own, in the ad account's
+     * timezone.
+     *
+     * @return list<DailyInsightRow>
+     *
+     * @throws ProviderUnavailable
+     */
+    public function campaignDailyInsights(
+        AdAccount $account,
+        string $externalCampaignId,
+        DateTimeImmutable $since,
+        DateTimeImmutable $until,
+    ): array;
 }

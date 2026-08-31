@@ -88,7 +88,9 @@ export default function AdminLayout({
                           },
                       ]
                     : []),
-                { label: 'Analytics', icon: Activity, pending: true },
+                ...(can('reports.view')
+                    ? [{ label: 'Analytics', href: route('admin.analytics.overview'), icon: Activity }]
+                    : []),
             ],
         },
         {

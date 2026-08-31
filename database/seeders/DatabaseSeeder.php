@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
                 DemoDataSeeder::class,
                 AdInfrastructureSeeder::class,
                 CampaignSeeder::class,
+                AnalyticsSeeder::class,
             ]);
         }
     }

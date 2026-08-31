@@ -87,6 +87,22 @@ return [
     ],
 
     /*
+     * Reporting and exports (spec §39).
+     */
+    'reporting' => [
+        /*
+         * How long a generated file stays on disk. An export is a snapshot of
+         * a client's spend and conversions; it should not outlive the reason
+         * it was made.
+         */
+        'export_lifetime_days' => (int) env('REPORT_EXPORT_LIFETIME_DAYS', 7),
+
+        // The widest window a single export may cover, so one request cannot
+        // ask for a decade of daily rows.
+        'max_export_days' => (int) env('REPORT_MAX_EXPORT_DAYS', 400),
+    ],
+
+    /*
      * Advertising provider adapters. `mock` keeps development and the test
      * suite entirely free of live provider credentials (spec §95).
      */
@@ -113,6 +129,24 @@ return [
             // How long an account may go unchecked before its health is
             // treated as unknown rather than as still good.
             'stale_after_hours' => (int) env('AD_ACCOUNT_STALE_AFTER_HOURS', 6),
+        ],
+
+        /*
+         * Spend reconciliation (spec §78).
+         *
+         * A small variance between what a provider reports and what the ledger
+         * captured is normal: providers restate, and the last sync before a
+         * check may be minutes old. The tolerance is what separates that from
+         * a discrepancy worth a person's time.
+         *
+         * Expressed both as an absolute floor and as a share of spend, and a
+         * variance has to clear both to be raised — a hundred taka on a
+         * hundred-thousand-taka campaign is noise, and on a two-hundred-taka
+         * campaign it is not.
+         */
+        'reconciliation' => [
+            'tolerance_minor' => (int) env('RECONCILIATION_TOLERANCE_MINOR', 10000),
+            'tolerance_percent' => (int) env('RECONCILIATION_TOLERANCE_PERCENT', 2),
         ],
     ],
 ];

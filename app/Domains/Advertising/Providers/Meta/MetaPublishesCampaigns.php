@@ -8,6 +8,7 @@ use App\Domains\Advertising\DTOs\AdDraft;
 use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\CampaignDraft;
 use App\Domains\Advertising\DTOs\CampaignInsights;
+use App\Domains\Advertising\DTOs\DailyInsightRow;
 use App\Domains\Advertising\DTOs\PublishedEntity;
 use App\Domains\Advertising\Enums\Provider;
 use App\Domains\Advertising\Exceptions\ProviderUnavailable;
@@ -16,6 +17,7 @@ use App\Domains\Campaign\Enums\BidStrategy;
 use App\Domains\Campaign\Enums\BudgetType;
 use App\Domains\Campaign\Enums\CampaignObjective;
 use App\Domains\Campaign\Values\Targeting;
+use DateTimeImmutable;
 
 /**
  * Creating and controlling campaigns at Meta (spec §21, §26, Rule 17).
@@ -222,6 +224,63 @@ trait MetaPublishesCampaigns
             status: $this->effectiveStatus($status),
             raw: ['spend' => $row['spend'] ?? null],
         );
+    }
+
+    /**
+     * Day-by-day performance over a window (spec §38, §78).
+     *
+     * `time_increment=1` is what makes Meta return one row per day rather than
+     * one row for the whole range. The window is re-fetched rather than only
+     * extended, because Meta restates: a conversion attributed days after the
+     * click lands on the day of the click, changing a figure already reported.
+     *
+     * @return list<DailyInsightRow>
+     */
+    public function campaignDailyInsights(
+        AdAccount $account,
+        string $externalCampaignId,
+        DateTimeImmutable $since,
+        DateTimeImmutable $until,
+    ): array {
+        $rows = $this->client->paginate($externalCampaignId.'/insights', [
+            'fields' => 'date_start,spend,impressions,clicks,reach,actions,action_values',
+            'time_increment' => 1,
+            'time_range' => json_encode([
+                'since' => $since->format('Y-m-d'),
+                'until' => $until->format('Y-m-d'),
+            ]),
+            'limit' => 100,
+        ]);
+
+        $insights = [];
+
+        foreach ($rows as $row) {
+            $date = isset($row['date_start']) ? (string) $row['date_start'] : null;
+
+            if ($date === null) {
+                continue;
+            }
+
+            $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+
+            if ($parsed === false) {
+                continue;
+            }
+
+            $insights[] = new DailyInsightRow(
+                date: $parsed,
+                spendMinor: $this->spendToMinor($row['spend'] ?? null, $account->currency),
+                currency: $account->currency,
+                impressions: isset($row['impressions']) ? (int) $row['impressions'] : null,
+                clicks: isset($row['clicks']) ? (int) $row['clicks'] : null,
+                reach: isset($row['reach']) ? (int) $row['reach'] : null,
+                conversions: $this->conversionsFrom($row),
+                conversionValueMinor: $this->conversionValueFrom($row, $account->currency),
+                raw: ['date_start' => $date],
+            );
+        }
+
+        return $insights;
     }
 
     // ------------------------------------------------------------------
@@ -496,6 +555,29 @@ trait MetaPublishesCampaigns
         }
 
         return (int) round(((float) (string) $spend) * (10 ** $scale));
+    }
+
+    /**
+     * What the conversions were worth, when Meta reports it. Same currency as
+     * the account, and the same decimal-to-minor conversion as spend.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function conversionValueFrom(array $row, string $currency): ?int
+    {
+        $values = $row['action_values'] ?? null;
+
+        if (! is_array($values)) {
+            return null;
+        }
+
+        foreach ($values as $value) {
+            if (is_array($value) && ($value['action_type'] ?? null) === 'purchase') {
+                return $this->spendToMinor($value['value'] ?? null, $currency);
+            }
+        }
+
+        return null;
     }
 
     /**

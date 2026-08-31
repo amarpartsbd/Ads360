@@ -8,6 +8,10 @@ use App\Domains\Advertising\Models\AdAccount;
 use App\Domains\Advertising\Models\AdAccountPool;
 use App\Domains\Advertising\Policies\AdAccountPolicy;
 use App\Domains\Advertising\Policies\AdAccountPoolPolicy;
+use App\Domains\Analytics\Models\ReportExport;
+use App\Domains\Analytics\Models\SpendReconciliation;
+use App\Domains\Analytics\Policies\ReportExportPolicy;
+use App\Domains\Analytics\Policies\SpendReconciliationPolicy;
 use App\Domains\Audit\Models\AuditLog;
 use App\Domains\Audit\Policies\AuditLogPolicy;
 use App\Domains\Billing\Models\ExchangeRate;
@@ -72,6 +76,8 @@ class AuthServiceProvider extends ServiceProvider
         AdAccountPool::class => AdAccountPoolPolicy::class,
         Campaign::class => CampaignPolicy::class,
         Creative::class => CreativePolicy::class,
+        ReportExport::class => ReportExportPolicy::class,
+        SpendReconciliation::class => SpendReconciliationPolicy::class,
     ];
 
     public function boot(): void

@@ -124,6 +124,12 @@ enum AuditAction: string
     case CreativeDeleted = 'campaign.creative.deleted';
     case CreativeDownloaded = 'campaign.creative.downloaded';
 
+    // Analytics and reconciliation (spec §38, §78)
+    case SpendDiscrepancyFound = 'analytics.reconciliation.discrepancy';
+    case SpendDiscrepancyResolved = 'analytics.reconciliation.resolved';
+    case ReportExported = 'analytics.report.exported';
+    case ReportDownloaded = 'analytics.report.downloaded';
+
     // Maker-checker (spec §25)
     case ApprovalRequested = 'governance.approval.requested';
     case ApprovalGranted = 'governance.approval.granted';

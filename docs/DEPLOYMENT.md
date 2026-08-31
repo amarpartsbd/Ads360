@@ -38,8 +38,11 @@ delays its own checks and nothing else.
 | `ads:check-connections` | Hourly | Verifies each live client grant, refreshing tokens a day ahead of expiry and warning the client when it cannot |
 | `ads:check-ad-accounts` | Hourly | Asks each provider about the managed accounts in service, updating spend mirrors, billing standing and health |
 | `ads:sync-campaign-spend` | Every 15 minutes | Reconciles what each running campaign has spent against its wallet hold, and finishes campaigns whose run is over |
+| `ads:ingest-metrics` | Hourly | Re-reads a trailing window of daily performance from each provider and upserts it, because providers restate past days |
+| `ads:reconcile-spend` | Daily, 03:30 | Compares provider-reported spend against what the ledger captured, and raises differences past tolerance |
+| `ads:prune-exports` | Daily, 04:00 | Removes expired report files from the private disk; the record of who exported what stays |
 
-All three are `withoutOverlapping()` and `onOneServer()`. The `providers`,
+All of them are `withoutOverlapping()` and `onOneServer()`. The `providers`,
 `campaign_publish` and `campaign_sync` queues are served by the `campaigns`
 Horizon supervisor; a deployment that adds queue nodes must include it.
 

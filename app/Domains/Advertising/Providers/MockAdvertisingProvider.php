@@ -10,6 +10,7 @@ use App\Domains\Advertising\DTOs\AdSetDraft;
 use App\Domains\Advertising\DTOs\AuthorizationRequest;
 use App\Domains\Advertising\DTOs\CampaignDraft;
 use App\Domains\Advertising\DTOs\CampaignInsights;
+use App\Domains\Advertising\DTOs\DailyInsightRow;
 use App\Domains\Advertising\DTOs\DiscoveredAsset;
 use App\Domains\Advertising\DTOs\ProviderAccountState;
 use App\Domains\Advertising\DTOs\ProviderCredentials;
@@ -52,6 +53,9 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     private array $campaignStates = [];
 
     private ?CampaignInsights $insightsOverride = null;
+
+    /** @var list<DailyInsightRow>|null */
+    private ?array $dailyInsightsOverride = null;
 
     public function __construct()
     {
@@ -275,6 +279,40 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
         );
     }
 
+    public function campaignDailyInsights(
+        AdAccount $account,
+        string $externalCampaignId,
+        DateTimeImmutable $since,
+        DateTimeImmutable $until,
+    ): array {
+        $this->failIfAsked(__FUNCTION__);
+
+        if ($this->dailyInsightsOverride !== null) {
+            return $this->dailyInsightsOverride;
+        }
+
+        // A flat, boring series. Tests that care about the numbers set their
+        // own; this is here so a caller gets a well-shaped answer rather than
+        // an empty one.
+        $rows = [];
+        $cursor = $since;
+
+        while ($cursor <= $until) {
+            $rows[] = new DailyInsightRow(
+                date: $cursor,
+                spendMinor: 0,
+                currency: $account->currency,
+                impressions: 0,
+                clicks: 0,
+                raw: ['mock' => true],
+            );
+
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        return $rows;
+    }
+
     // ------------------------------------------------------------------
     // Test hooks
     // ------------------------------------------------------------------
@@ -318,6 +356,17 @@ abstract class MockAdvertisingProvider implements AdvertisingProvider
     public function willReportInsights(CampaignInsights $insights): void
     {
         $this->insightsOverride = $insights;
+    }
+
+    /**
+     * Make the provider report a particular daily series — including a
+     * restated one, which is the case ingestion has to survive.
+     *
+     * @param  list<DailyInsightRow>  $rows
+     */
+    public function willReportDailyInsights(array $rows): void
+    {
+        $this->dailyInsightsOverride = $rows;
     }
 
     /** What the provider currently thinks a published campaign's state is. */

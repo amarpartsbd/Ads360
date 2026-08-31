@@ -261,6 +261,36 @@ What is implemented today, and what must be true before production.
   that serves them as an attachment with `nosniff`.
 - A creative an ad depends on cannot be deleted.
 
+### Analytics and reports
+
+- Every metrics read is filtered by organization, and the client analytics
+  screen is asserted by test to show one tenant's spend and not another's.
+- **Reconciliation never moves money.** It records a comparison and, past a
+  tolerance, raises it for a person. Correcting a discrepancy is a wallet
+  adjustment with its own approval (§25) — a scheduled job with unattended
+  write access to client funds is what that control exists to prevent. A test
+  asserts no balance changes when a large variance is found.
+- Settling a discrepancy requires a written reason, enforced by both the action
+  and a database check constraint. A discrepancy closed with no explanation
+  looks settled to everyone who comes after.
+- Reconciliation is platform-only. A difference between what a provider reports
+  and what the platform charged is an internal finance matter; showing it to a
+  client would raise a question about their bill that nobody has answered yet.
+- Report exports are scoped to one organization, downloaded through a
+  policy-checked and audited route, and served as attachments with `nosniff`.
+  The storage path is `$hidden` on the model, so no prop can carry it.
+- Files expire after a week and are removed by a scheduled sweep. The row stays
+  — who exported what is worth keeping; the client data inside it is not. The
+  download route re-checks expiry itself, because the sweep runs on a schedule
+  and a file can be past its date before it next runs.
+- **CSV injection is neutralised.** A campaign name is client-supplied text,
+  and a spreadsheet evaluates a cell beginning with `=`, `+`, `-` or `@`.
+  Quoting protects the file's structure but not the spreadsheet that opens it,
+  so such values are prefixed to force them to be read as text. Asserted by a
+  test using a name a client could genuinely type.
+- Export windows are bounded, so one request cannot ask for a decade of daily
+  rows and occupy a worker indefinitely.
+
 ### Data handling
 
 - Provider credentials are never sent to the browser. Nothing in the shared
@@ -285,10 +315,6 @@ for an oversight:
 - Client risk scoring (§12) — Phase 9.
 
 
-- Reconciliation against provider spend (§78) — Phase 6. Wallet-level
-  reconciliation exists (`Wallet::isReconciled()`) and is surfaced in the admin
-  wallet view; the scheduled job that compares provider spend against the ledger
-  arrives with the analytics pipeline.
 - Live payment gateways (§33) — the provider abstraction and a mock adapter
   exist; SSLCOMMERZ, bKash and Nagad adapters land when merchant accounts are
   approved. Only manually verified methods are offered in the interface today.

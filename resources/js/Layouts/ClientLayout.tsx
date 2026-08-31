@@ -81,7 +81,11 @@ export default function ClientLayout({
         },
         {
             label: 'Insights',
-            items: [{ label: 'Analytics', icon: BarChart3, pending: true }],
+            items: [
+                ...(can('reports.view')
+                    ? [{ label: 'Analytics', href: route('client.analytics.index'), icon: BarChart3 }]
+                    : []),
+            ],
         },
         {
             label: 'Workspace',

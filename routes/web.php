@@ -11,9 +11,11 @@ use App\Http\Controllers\Admin\CampaignReviewController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\FinanceController;
+use App\Http\Controllers\Admin\ReconciliationController;
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Client\AnalyticsController;
 use App\Http\Controllers\Client\AssetController;
 use App\Http\Controllers\Client\CampaignController;
 use App\Http\Controllers\Client\ClientDashboardController;
@@ -28,6 +30,7 @@ use App\Http\Controllers\Client\VerificationController;
 use App\Http\Controllers\Client\WalletController;
 use App\Http\Controllers\Shared\CreativeDownloadController;
 use App\Http\Controllers\Shared\PaymentProofDownloadController;
+use App\Http\Controllers\Shared\ReportDownloadController;
 use App\Http\Controllers\Shared\VerificationDocumentDownloadController;
 use App\Http\Controllers\Shared\WelcomeController;
 use Illuminate\Support\Facades\Route;
@@ -147,6 +150,19 @@ Route::middleware(['auth', 'verified', 'tenant'])
             ->name('campaigns.ads.store');
         Route::delete('campaigns/{campaign}/ads/{ad}', [CampaignController::class, 'destroyAd'])
             ->name('campaigns.ads.destroy');
+
+        /*
+         * Analytics and reports (spec §38, §39).
+         *
+         * Exports are queued, never generated in the request: a year of a busy
+         * client's data is slow by nature.
+         */
+        Route::get('analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+        Route::post('analytics/exports', [AnalyticsController::class, 'export'])
+            ->middleware('throttle:10,1')
+            ->name('analytics.exports.store');
+        Route::get('analytics/exports/{export}/download', ReportDownloadController::class)
+            ->name('analytics.exports.download');
 
         // Creative library (spec §23).
         Route::get('creatives', [CreativeController::class, 'index'])->name('creatives.index');
@@ -307,6 +323,22 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
 
         Route::get('creatives/{creative}/download', CreativeDownloadController::class)
             ->name('creatives.download');
+
+        /*
+         * Analytics and reconciliation (spec §38, §78).
+         *
+         * Settling a discrepancy records a decision; it never moves money.
+         * That goes through a wallet adjustment, with its own approval.
+         */
+        Route::get('analytics', [ReconciliationController::class, 'overview'])
+            ->name('analytics.overview');
+        Route::get('analytics/reconciliation', [ReconciliationController::class, 'index'])
+            ->name('analytics.reconciliation');
+        Route::post('analytics/reconciliation/{spendReconciliation}/resolve', [ReconciliationController::class, 'resolve'])
+            ->name('analytics.reconciliation.resolve');
+
+        Route::get('analytics/exports/{export}/download', ReportDownloadController::class)
+            ->name('analytics.exports.download');
 
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit.index');
     });
