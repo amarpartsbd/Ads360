@@ -68,6 +68,6 @@ final class ProviderAssetPolicy
             && $user->tenant_id === $asset->tenant_id
             && $organization !== null
             && $organization->getKey() === $asset->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

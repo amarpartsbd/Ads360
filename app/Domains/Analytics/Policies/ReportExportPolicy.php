@@ -73,6 +73,6 @@ final class ReportExportPolicy
             && $user->tenant_id === $export->tenant_id
             && $organization !== null
             && $organization->getKey() === $export->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

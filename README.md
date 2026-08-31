@@ -8,20 +8,22 @@ BDT wallet, and submit campaigns for review. Approved campaigns are published to
 Meta and Google through the platform's managed advertising infrastructure, and
 spend is reconciled back against the client's ledger.
 
-> **Status: Phase 7 complete.** Authentication, tenancy, RBAC, audit logging,
+> **Status: Phase 8 complete.** Authentication, tenancy, RBAC, audit logging,
 > business verification (KYC), team management, the wallet, ledger, pricing,
 > exchange rate, deposit and invoice modules, the advertising provider
 > abstraction with managed ad account inventory, the campaign engine, live Meta
-> and Google Ads adapters, and the analytics pipeline with spend reconciliation
-> and report exports are in place and covered by tests.
+> and Google Ads adapters, the analytics pipeline with spend reconciliation and
+> report exports, and the agency and reseller module are in place and covered by
+> tests.
 >
 > Both provider adapters are tested against faked APIs; neither has been run
 > against the provider itself, which needs reviewed applications and real
 > credentials — see [Going live with Meta](docs/DEPLOYMENT.md) and
 > [Going live with Google Ads](docs/DEPLOYMENT.md). Google Ads is behind
 > `FEATURE_GOOGLE_ADS` and publishes search campaigns only; what it does not do
-> is listed in the deployment notes. The agency module and white-label work are
-> not yet built — see [Roadmap](#roadmap).
+> is listed in the deployment notes. The agency module is behind
+> `FEATURE_AGENCY_MODULE`. White-label branding, the advanced risk engine and
+> AI assistance are not yet built — see [Roadmap](#roadmap).
 
 ---
 
@@ -171,8 +173,20 @@ Phases follow the platform specification.
 | 5     | Meta integration                                            | Complete    |
 | 6     | Analytics pipeline, reporting, reconciliation               | Complete    |
 | 7     | Google Ads                                                  | Complete    |
-| 8     | Agency and reseller module                                  | Next        |
-| 9     | White label, advanced risk, AI assistance, enterprise APIs  | Planned     |
+| 8     | Agency and reseller module                                  | Complete    |
+| 9     | White label, advanced risk, AI assistance, enterprise APIs  | Next        |
+
+### Agencies
+
+An agency is a tenant; the clients it manages are organizations inside that
+tenant. An agency owner's role is granted at tenant scope with no organization
+on the grant, which is what lets them reach every client — including ones added
+after they joined — while a manager or staff member reaches only the clients
+they are assigned to. Neither can cross into another agency, because that is a
+different tenant and the global scope never crosses one.
+
+An agency reads the fee schedule that prices it and never writes one, and it
+cannot verify its own client: that stays a platform compliance decision.
 
 No phase starts until the tenant isolation suite is green, and the
 `--group=concurrency` suite — real forked processes competing for one wallet and

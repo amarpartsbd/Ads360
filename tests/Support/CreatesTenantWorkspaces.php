@@ -63,6 +63,60 @@ trait CreatesTenantWorkspaces
         $user->forgetCachedPermissions();
     }
 
+    /**
+     * An agency, its own house organization, and an owner holding the
+     * tenant-wide grant (spec §42).
+     *
+     * The grant carries no organization, which is what makes it span the
+     * agency rather than one workspace — the same shape ProvisionAgency
+     * writes. A test that granted it against an organization would be testing
+     * an ordinary client owner with an agency-sounding role name.
+     *
+     * @return array{tenant: Tenant, organization: Organization, user: User}
+     */
+    protected function createAgencyWorkspace(string $roleSlug = 'agency-owner', ?Tenant $tenant = null): array
+    {
+        $tenant ??= Tenant::factory()->agency()->create();
+
+        $house = Organization::factory()->forTenant($tenant)->create(['is_house_account' => true]);
+        $user = User::factory()->memberOf($house)->create();
+
+        $this->grantTenantWideRole($user, $roleSlug);
+
+        return ['tenant' => $tenant, 'organization' => $house, 'user' => $user];
+    }
+
+    /** A client organization under an agency. */
+    protected function createAgencyClient(Tenant $agency, string $name = 'Client'): Organization
+    {
+        return Organization::factory()->forTenant($agency)->create([
+            'name' => $name,
+            'is_house_account' => false,
+        ]);
+    }
+
+    /**
+     * Grants a role across a whole tenant — no organization on the pivot.
+     */
+    protected function grantTenantWideRole(User $user, string $roleSlug): void
+    {
+        /** @var Role|null $role */
+        $role = Role::query()->whereNull('tenant_id')->where('slug', $roleSlug)->first();
+
+        if ($role === null) {
+            throw new RuntimeException(
+                "System role [{$roleSlug}] not found. Call seedAccessControl() first."
+            );
+        }
+
+        $user->roles()->attach($role->getKey(), [
+            'organization_id' => null,
+            'tenant_id' => $user->tenant_id,
+        ]);
+
+        $user->forgetCachedPermissions();
+    }
+
     protected function createPlatformUser(string $roleSlug = 'super-admin'): User
     {
         $user = User::factory()->platform()->create();

@@ -23,6 +23,7 @@ class FinanceSeeder extends Seeder
     public function run(): void
     {
         $this->seedDefaultPricing();
+        $this->seedAgencyPricing();
         $this->seedExchangeRates();
     }
 
@@ -69,6 +70,82 @@ class FinanceSeeder extends Seeder
                 'is_active' => true,
             ],
         ]);
+    }
+
+    /**
+     * Fee schedules the platform offers an agency (spec §36, §42).
+     *
+     * Platform-scoped and not default, so they price nobody on their own: they
+     * are the schedules an administrator assigns to a particular agency, which
+     * copies them to a tenant-scoped plan for that agency alone.
+     *
+     * An agency pays less than a direct client because it brings its own
+     * clients and does its own account management. That is a commercial
+     * decision the platform makes, which is why an agency can read its plan
+     * and never write one.
+     */
+    private function seedAgencyPricing(): void
+    {
+        $schedules = [
+            [
+                'name' => 'Agency standard',
+                'description' => 'The fee schedule for an agency managing its own clients.',
+                'platform' => '5.5000',
+                'management' => '1.5000',
+            ],
+            [
+                'name' => 'Reseller preferred',
+                'description' => 'For resellers carrying their own client relationships and support.',
+                'platform' => '4.0000',
+                'management' => null,
+            ],
+        ];
+
+        foreach ($schedules as $schedule) {
+            if (PricingPlan::query()->where('name', $schedule['name'])->exists()) {
+                continue;
+            }
+
+            /** @var PricingPlan $plan */
+            $plan = PricingPlan::query()->create([
+                'name' => $schedule['name'],
+                'description' => $schedule['description'],
+                'scope' => PricingScope::Platform,
+                'currency' => config('platform.default_currency'),
+                'is_active' => true,
+                // Never the default: assigning it is a deliberate act.
+                'is_default' => false,
+            ]);
+
+            $rules = [[
+                'fee_type' => FeeType::PlatformFee,
+                'calculation' => PricingCalculation::Percentage,
+                'percentage' => $schedule['platform'],
+                'priority' => 10,
+                'is_active' => true,
+            ]];
+
+            if ($schedule['management'] !== null) {
+                $rules[] = [
+                    'fee_type' => FeeType::ManagementFee,
+                    'calculation' => PricingCalculation::Percentage,
+                    'percentage' => $schedule['management'],
+                    'applies_from_amount' => 100_000_00,
+                    'priority' => 20,
+                    'is_active' => true,
+                ];
+            }
+
+            $rules[] = [
+                'fee_type' => FeeType::Tax,
+                'calculation' => PricingCalculation::Percentage,
+                'percentage' => '15.0000',
+                'priority' => 90,
+                'is_active' => true,
+            ];
+
+            $plan->rules()->createMany($rules);
+        }
     }
 
     /**

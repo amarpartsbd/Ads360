@@ -50,7 +50,9 @@ export default function AdminLayout({
                 ...(can('clients.view')
                     ? [{ label: 'All clients', href: route('admin.clients.index'), icon: Building2 }]
                     : []),
-                { label: 'Agencies', icon: Users, pending: true },
+                ...(can('clients.view')
+                    ? [{ label: 'Agencies', href: route('admin.agencies.index'), icon: Users }]
+                    : []),
                 ...(can('clients.verify')
                     ? [
                           {

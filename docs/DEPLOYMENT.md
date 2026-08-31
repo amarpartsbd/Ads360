@@ -149,6 +149,33 @@ The campaign builder collects them ("More headlines", "More descriptions" on the
 ad form); an ad without enough of them is refused at publish time with a message
 naming the minimum, rather than having copy invented to fill the gap.
 
+## Turning on the agency module
+
+`FEATURE_AGENCY_MODULE=true`. Off, existing agencies stay listed in the admin
+area but their client screens are closed and none can be provisioned — the flag
+gates the module, not the data.
+
+An agency is provisioned by platform staff, never by registration: being an
+agency is a commercial decision. Admin → Agencies → Provision creates the
+tenant, its own workspace and its owner in one transaction. The owner verifies
+their email like anyone else.
+
+Two things to know before the first agency goes live:
+
+- **An agency owner reaches every client of their agency**, including clients
+  added later. That is the point of the tenant-scoped grant, and it makes the
+  owner's password the widest client-side credential on the platform. Treat it
+  accordingly.
+- **Assign a fee schedule.** Until you do, the agency's clients are priced by
+  the platform default, which is the direct-client rate. `FinanceSeeder` ships
+  "Agency standard" and "Reseller preferred" as templates; assigning one copies
+  it to a plan belonging to that agency alone, so editing the template later
+  does not change what an existing agency pays.
+
+Agency staff below owner level are assigned per client, from the agency's own
+client detail screen. An agency cannot verify its own clients — that stays with
+platform compliance.
+
 ## Environments
 
 Development, staging and production are fully separate. Never use production

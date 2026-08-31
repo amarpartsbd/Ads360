@@ -15,6 +15,7 @@ return [
     'support_email' => env('PLATFORM_SUPPORT_EMAIL', 'support@ads360.test'),
     'default_currency' => env('PLATFORM_DEFAULT_CURRENCY', 'BDT'),
     'default_timezone' => env('PLATFORM_DEFAULT_TIMEZONE', 'Asia/Dhaka'),
+    'default_country' => env('PLATFORM_DEFAULT_COUNTRY', 'BD'),
 
     'security' => [
         // Administrators must hold a confirmed authenticator (spec §9).

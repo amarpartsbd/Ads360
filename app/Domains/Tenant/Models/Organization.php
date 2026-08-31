@@ -11,6 +11,7 @@ use App\Domains\Tenant\Enums\MembershipStatus;
 use App\Domains\Tenant\Enums\OrganizationStatus;
 use App\Support\Concerns\HasPublicId;
 use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $public_id
  * @property string $name
  * @property OrganizationStatus $status
+ * @property bool $is_house_account
  */
 class Organization extends Model
 {
@@ -58,10 +60,36 @@ class Organization extends Model
     {
         return [
             'status' => OrganizationStatus::class,
+            'is_house_account' => 'boolean',
             'settings' => 'array',
             'activated_at' => 'immutable_datetime',
             'suspended_at' => 'immutable_datetime',
         ];
+    }
+
+    /**
+     * Whether this is the agency's own workspace rather than one of its
+     * clients (spec §42).
+     *
+     * Not fillable, and set only when an agency is provisioned. A request that
+     * could flip it would let an agency remove a client from its own client
+     * list, or add itself to it.
+     */
+    public function isHouseAccount(): bool
+    {
+        return (bool) $this->is_house_account;
+    }
+
+    /**
+     * The organizations an agency manages: everything under the tenant except
+     * the agency itself.
+     *
+     * @param  Builder<Organization>  $query
+     * @return Builder<Organization>
+     */
+    public function scopeAgencyClients(Builder $query): Builder
+    {
+        return $query->where('is_house_account', false);
     }
 
     /**

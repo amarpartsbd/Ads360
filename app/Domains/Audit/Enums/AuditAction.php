@@ -54,6 +54,13 @@ enum AuditAction: string
     case InvitationAccepted = 'tenant.invitation.accepted';
     case InvitationRevoked = 'tenant.invitation.revoked';
 
+    // Agency and reseller (spec §42)
+    case AgencyProvisioned = 'agency.provisioned';
+    case AgencyClientCreated = 'agency.client.created';
+    case AgencyStaffAssigned = 'agency.staff.assigned';
+    case AgencyStaffUnassigned = 'agency.staff.unassigned';
+    case AgencyPricingAssigned = 'agency.pricing.assigned';
+
     // Compliance
     case VerificationSubmitted = 'compliance.verification.submitted';
     case VerificationClaimed = 'compliance.verification.claimed';

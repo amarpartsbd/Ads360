@@ -74,6 +74,6 @@ final class WalletPolicy
             && $user->tenant_id === $wallet->tenant_id
             && $organization !== null
             && $organization->getKey() === $wallet->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

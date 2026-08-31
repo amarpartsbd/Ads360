@@ -74,6 +74,6 @@ final class CreativePolicy
             && $user->tenant_id === $creative->tenant_id
             && $organization !== null
             && $organization->getKey() === $creative->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

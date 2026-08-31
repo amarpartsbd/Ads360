@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\AdAccountController;
 use App\Http\Controllers\Admin\AdAccountPoolController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AgencyController;
 use App\Http\Controllers\Admin\ApprovalController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CampaignReviewController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Admin\ReconciliationController;
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Admin\VerificationController as AdminVerificationController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Client\AgencyClientController;
 use App\Http\Controllers\Client\AnalyticsController;
 use App\Http\Controllers\Client\AssetController;
 use App\Http\Controllers\Client\CampaignController;
@@ -90,6 +92,25 @@ Route::middleware(['auth', 'verified', 'tenant'])
             ->name('verification.documents.download');
 
         // Team management (spec §82).
+        /*
+         * Agency clients (spec §42).
+         *
+         * The hierarchy is Platform → Agency → Agency Client, and a client is
+         * an organization inside the agency's own tenant. The controller
+         * resolves every identifier through the agency's own roster, so a
+         * valid identifier from another agency finds nothing.
+         */
+        Route::prefix('clients')->name('clients.')->group(function (): void {
+            Route::get('/', [AgencyClientController::class, 'index'])->name('index');
+            Route::post('/', [AgencyClientController::class, 'store'])->name('store');
+            Route::get('{client}', [AgencyClientController::class, 'show'])->name('show');
+            Route::post('{client}/open', [AgencyClientController::class, 'open'])->name('open');
+            Route::post('{client}/staff', [AgencyClientController::class, 'assignStaff'])
+                ->name('staff.assign');
+            Route::delete('{client}/staff/{member}', [AgencyClientController::class, 'removeStaff'])
+                ->name('staff.remove');
+        });
+
         Route::get('team', [TeamController::class, 'index'])->name('team.index');
         Route::post('team/invitations', [TeamController::class, 'invite'])->name('team.invite');
         Route::post('team/invitations/{invitation}/resend', [TeamController::class, 'resendInvitation'])
@@ -227,6 +248,20 @@ Route::middleware(['auth', 'verified', 'platform', 'admin.2fa'])
 
         Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
         Route::get('clients/{organization}', [ClientController::class, 'show'])->name('clients.show');
+
+        /*
+         * Agencies and resellers (spec §42).
+         *
+         * Provisioning is platform-only because being an agency is a
+         * commercial decision, and assigning a fee schedule needs the pricing
+         * permission rather than the client one — creating an agency and
+         * deciding what it pays are different jobs.
+         */
+        Route::get('agencies', [AgencyController::class, 'index'])->name('agencies.index');
+        Route::post('agencies', [AgencyController::class, 'store'])->name('agencies.store');
+        Route::get('agencies/{agency}', [AgencyController::class, 'show'])->name('agencies.show');
+        Route::post('agencies/{agency}/pricing', [AgencyController::class, 'assignPlan'])
+            ->name('agencies.pricing');
 
         // Compliance (spec §41).
         Route::get('verification', [AdminVerificationController::class, 'index'])->name('verification.index');

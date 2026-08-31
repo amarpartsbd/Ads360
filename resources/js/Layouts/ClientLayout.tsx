@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Building2,
@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import { FlashMessages } from '@/Components/Layout/FlashMessages';
 import { Sidebar, type NavSection } from '@/Components/Layout/Sidebar';
 import { Topbar } from '@/Components/Layout/Topbar';
+import type { SharedProps } from '@/Types';
 import { usePermissions } from '@/Hooks/usePermissions';
 
 /**
@@ -39,6 +40,14 @@ export default function ClientLayout({
     children: ReactNode;
 }) {
     const { can } = usePermissions();
+    const tenant = usePage<SharedProps>().props.tenant;
+
+    /*
+     * Only an agency or reseller has clients (spec §42). A direct client tenant
+     * never sees this section, because for them the organization *is* the
+     * client and a list of one would be noise.
+     */
+    const managesClients = tenant?.managesClients === true && can('clients.view');
 
     const sections: NavSection[] = [
         {
@@ -47,6 +56,20 @@ export default function ClientLayout({
                 { label: 'Verification', href: route('client.verification.show'), icon: ShieldCheck },
             ],
         },
+        ...(managesClients
+            ? [
+                  {
+                      label: 'Agency',
+                      items: [
+                          {
+                              label: 'Clients',
+                              href: route('client.clients.index'),
+                              icon: Building2,
+                          },
+                      ],
+                  },
+              ]
+            : []),
         {
             label: 'Advertising',
             items: [

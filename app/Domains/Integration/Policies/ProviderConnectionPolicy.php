@@ -90,6 +90,6 @@ final class ProviderConnectionPolicy
             && $user->tenant_id === $connection->tenant_id
             && $organization !== null
             && $organization->getKey() === $connection->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

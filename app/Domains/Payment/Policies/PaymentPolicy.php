@@ -63,6 +63,6 @@ final class PaymentPolicy
             && $user->tenant_id === $payment->tenant_id
             && $organization !== null
             && $organization->getKey() === $payment->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

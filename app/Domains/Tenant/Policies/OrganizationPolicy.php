@@ -22,7 +22,7 @@ final class OrganizationPolicy
     {
         return $user->isPlatformUser()
             ? $user->hasPermissionTo(Permission::ClientsView)
-            : $user->activeOrganizations()->exists();
+            : $user->reachableOrganizations()->exists();
     }
 
     public function view(User $user, Organization $organization): bool
@@ -68,13 +68,14 @@ final class OrganizationPolicy
     }
 
     /**
-     * The tenant boundary itself: same tenant, and an access-granting
-     * membership in this specific organization.
+     * The tenant boundary itself: same tenant, and either an access-granting
+     * membership in this specific organization or an agency-wide grant that
+     * covers every client of that tenant (spec §42).
      */
     private function actsWithin(User $user, Organization $organization): bool
     {
         return $user->tenant_id !== null
             && $user->tenant_id === $organization->tenant_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

@@ -93,11 +93,16 @@ class AuthServiceProvider extends ServiceProvider
                 function (User $user, ?Organization $organization = null) use ($permission): bool {
                     $organization ??= app(TenantContext::class)->organization();
 
-                    // A non-platform user may only be checked against an
-                    // organization they actually belong to.
+                    /*
+                     * A non-platform user may only be checked against an
+                     * organization they can actually reach — a membership, or
+                     * an agency-wide grant covering every client of their own
+                     * tenant (spec §42). Reach is not permission: the check
+                     * below still has to pass.
+                     */
                     if ($organization !== null
                         && ! $user->isPlatformUser()
-                        && ! $user->belongsToOrganization($organization)) {
+                        && ! $user->canReachOrganization($organization)) {
                         return false;
                     }
 

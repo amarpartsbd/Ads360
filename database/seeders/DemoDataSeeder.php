@@ -170,18 +170,36 @@ class DemoDataSeeder extends Seeder
             ],
         );
 
-        // An agency holds one organization per client it manages.
+        /*
+         * An agency holds its own workspace plus one organization per client
+         * it manages (spec §42). The house account is flagged so it never
+         * appears on the agency's own client list.
+         */
         $house = $this->makeOrganization($tenant, 'Demo Media Agency', 'demo-agency');
-        $client = $this->makeOrganization($tenant, 'Agency Client — Riverside Cafe', 'riverside-cafe');
 
+        if (! $house->isHouseAccount()) {
+            $house->is_house_account = true;
+            $house->save();
+        }
+
+        $first = $this->makeOrganization($tenant, 'Agency Client — Riverside Cafe', 'riverside-cafe');
+        $this->makeOrganization($tenant, 'Agency Client — Hilltop Motors', 'hilltop-motors');
+
+        /*
+         * The owner is a member of the agency's own workspace and of nothing
+         * else. Their reach over both clients comes from the tenant-wide grant
+         * below, which is the shape a real provisioning writes — and the shape
+         * that keeps working when a third client is added tomorrow.
+         */
         $owner = $this->makeUser('Demo Agency Owner', 'agency.owner@demo-agency.test', $tenant);
         $this->addMember($house, $owner);
-        $this->addMember($client, $owner);
         $this->grant($owner, 'agency-owner');
 
+        // Scoped to one client, so development exercises the narrower path too.
         $manager = $this->makeUser('Demo Agency Manager', 'agency.manager@demo-agency.test', $tenant);
-        $this->addMember($client, $manager);
-        $this->grant($manager, 'agency-manager', $client);
+        $this->addMember($first, $manager);
+        $this->grant($manager, 'agency-manager', $first);
+
     }
 
     /**

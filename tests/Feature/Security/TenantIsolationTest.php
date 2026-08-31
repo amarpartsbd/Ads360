@@ -181,8 +181,19 @@ final class TenantIsolationTest extends TestCase
         $agencyA = Tenant::factory()->agency()->create();
         $agencyB = Tenant::factory()->agency()->create();
 
-        $workspaceA = $this->createWorkspace('agency-owner', $agencyA);
+        /*
+         * A real agency owner: the grant carries no organization, so it spans
+         * the whole agency. Granting it against one organization would test an
+         * ordinary client owner with an agency-sounding role name, and would
+         * miss the reach this is meant to bound (spec §42).
+         */
+        $workspaceA = $this->createAgencyWorkspace('agency-owner', $agencyA);
         $clientOfB = Organization::factory()->forTenant($agencyB)->create();
+
+        $this->assertTrue(
+            $workspaceA['user']->actsAcrossTenant(),
+            'The fixture did not produce an owner with agency-wide reach.'
+        );
 
         app(TenantContext::class)->for($agencyA, $workspaceA['organization']);
 

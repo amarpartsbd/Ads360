@@ -585,7 +585,105 @@ A client's own grant acts through their own account rather than the platform's
 manager, since naming ours would have Google refuse a request they are entitled
 to make.
 
-## 17. Analytics and reconciliation
+## 17. Agencies and resellers
+
+`app/Domains/Agency/`. The hierarchy is **Platform → Agency → Agency Client**
+(§42), and an agency client is an **organization inside the agency's own
+tenant**. That single decision is what makes "agency A cannot read agency B's
+clients" true by construction rather than by a check somewhere: they are in
+different tenants, and the global scope never crosses one.
+
+### The change that made it work: reach
+
+Before this phase, access to an organization meant one thing — an active
+membership row. That is right for a client user and wrong for an agency owner,
+who has authority over clients created years after they joined and should not
+need a row in each.
+
+So `User` now answers two separate questions:
+
+- `actsAcrossTenant()` — does this user hold a role granted at **TENANT** scope
+  with no organization on the grant? True for agency-owner and agency-admin,
+  false for client-owner however senior that sounds, false for platform staff.
+- `canReachOrganization()` — same tenant, **and** either a membership or that
+  tenant-wide grant.
+
+Every policy's `actsWithin`, the permission gate, context resolution and the
+workspace switcher go through the second one. `belongsToOrganization()` still
+means exactly what it says and is still used where membership is the point.
+
+**Reach is not permission.** Holding it means a permission check is worth
+making; it never grants one. An agency manager reaches the two clients they are
+assigned to and still cannot approve a campaign on either — approval is the
+platform's, as §25 requires.
+
+### The two agency role scopes do different jobs
+
+| Role | Scope | Reach |
+|---|---|---|
+| agency-owner, agency-admin | TENANT | every client, including future ones |
+| agency-manager, agency-staff | ORGANIZATION | exactly the clients they are assigned to |
+
+`AssignStaffToClient` writes both the membership and the organization-scoped
+grant in one transaction, and refuses the tenant-wide roles outright: assigning
+an owner to a single client would read as narrowing their access while actually
+widening it.
+
+Removing someone revokes the membership rather than deleting it, and detaches
+only the grants naming *that* client — audit entries written while they had
+access point at the row (§62), and stripping by role alone would silently
+remove them from every other client they work on.
+
+### The house account
+
+An agency tenant holds one organization for the agency itself and one per
+client. `organizations.is_house_account` tells them apart, with a partial unique
+index allowing one per tenant. Without it an agency's client list would include
+the agency, and "assign staff to a client" could quietly mean the agency. The
+column is not fillable: a request that could flip it would let an agency remove
+a client from its own roster.
+
+### Agency pricing needed no new resolution
+
+`PricingEngine` already prefers a TENANT-scoped plan over the platform default
+for every organization of that tenant, so `AssignAgencyPlan` only has to produce
+the plan — every client, including ones added later, is priced by it from the
+moment it exists.
+
+Two deliberate choices there. The schedule is **copied, not shared**: a plan is
+a complete statement of what someone pays, and two agencies pointing at one row
+would mean changing one's terms silently rewrote the other's. And a superseded
+plan is **deactivated, not deleted**, because priced transactions carry a
+snapshot and point at its row (§62).
+
+Only a platform-scoped schedule may be assigned. Copying one agency's negotiated
+plan onto another would move commercial terms between two customers of the
+platform through what looks like a dropdown.
+
+An agency can **read** the schedule that prices it and never write one — these
+are the platform's fees, and an agency setting them would be setting what it is
+charged.
+
+### Reporting stops at reach, and stops at one currency
+
+`AgencyDirectory::roster()` is built from the organizations the *asking user*
+can reach, not from the tenant: an owner sees every client, a manager sees
+theirs. Every figure comes from one grouped query per dimension, so a roster of
+two hundred clients is not two hundred queries.
+
+`AgencyReport` withholds a total when the roster spans currencies rather than
+adding taka to dollars or converting at a rate the report chose, with no record
+of either (Rule 8, §35). The counts still add up; a campaign is a campaign in
+any currency.
+
+### What an agency still cannot do
+
+Verify its own client. A new client organization is PENDING and stays there
+until platform compliance reviews it — an agency vouching for its own client
+would be the business being checked signing off on the check (§11). The agency
+can build campaigns immediately; what it cannot do is make them spend.
+
+## 18. Analytics and reconciliation
 
 `app/Domains/Analytics/`. Two pipelines that look similar and answer different
 questions: what a client is *shown*, and what a client is *charged*. They are
@@ -656,7 +754,7 @@ client typed, and a spreadsheet evaluates a cell beginning with `=`, `+`, `-`
 or `@`. Quoting protects the file's structure, not the spreadsheet that opens
 it, so such values are prefixed to force them to be read as text.
 
-## 18. Money
+## 19. Money
 
 `app/Support/Values/Money.php`. Integer minor units, currency travels with the
 amount, and no floating point anywhere. Multiplication and division require an
@@ -666,7 +764,7 @@ minor unit. Combining two currencies raises `CurrencyMismatch` — conversion is
 never implicit, it goes through the exchange-rate engine so the rate used is
 recorded with the transaction.
 
-## 19. Conventions
+## 20. Conventions
 
 **Database.** snake_case, plural tables, `_id` foreign keys. A ULID `public_id`
 on every externally exposed entity; the auto-increment key stays internal.
@@ -690,7 +788,7 @@ critical and payment work never queues behind analytics or report generation.
 **Soft deletes** on tenants, organizations, users. Never on ledger entries,
 payments, audit logs or finalised invoices — those use reversal semantics.
 
-## 20. Reserved domains
+## 21. Reserved domains
 
 `Agency`, `Notification`, `Support` exist as empty directories.
 `Creative` holds the lean library the campaign engine needs; approval workflows
@@ -701,7 +799,7 @@ The permission registry likewise already declares permissions for later modules.
 The seeder writes them all and policies adopt them as each module lands, which
 keeps the vocabulary stable instead of renaming permissions later.
 
-## 21. Adding a module
+## 22. Adding a module
 
 1. Read the existing schema and identify dependencies.
 2. Write the migration. Foreign keys, check constraints and appropriate

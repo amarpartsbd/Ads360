@@ -20,6 +20,9 @@ use Tighten\Ziggy\Ziggy;
  */
 final class HandleInertiaRequests extends Middleware
 {
+    /** How many workspaces the switcher carries before it is a list to browse. */
+    private const SWITCHER_LIMIT = 50;
+
     protected $rootView = 'app';
 
     public function version(Request $request): ?string
@@ -47,6 +50,14 @@ final class HandleInertiaRequests extends Middleware
                     'id' => $context->requireTenant()->public_id,
                     'name' => $context->requireTenant()->name,
                     'type' => $context->requireTenant()->type->value,
+                    /*
+                     * Whether this tenant is an agency or reseller (spec §42).
+                     * The interface uses it to decide whether a clients
+                     * section exists at all; the server still authorizes every
+                     * request on its own (Rule 9).
+                     */
+                    'managesClients' => $context->requireTenant()->type->managesClients()
+                        && (bool) config('platform.features.agency_module'),
                     'branding' => $context->requireTenant()->brandingWithDefaults(),
                 ]
                 : null,
@@ -58,8 +69,18 @@ final class HandleInertiaRequests extends Middleware
                 ? $this->serialiseOrganization($context->requireOrganization())
                 : null,
 
+            /*
+             * The workspace switcher. Capped, because an agency owner reaches
+             * every client of their agency (spec §42) and a large one would
+             * otherwise ship hundreds of rows on every response. The clients
+             * screen is where a long list is browsed and searched; this is for
+             * hopping between the few that are open.
+             */
             'organizations' => fn (): array => $user instanceof User && ! $user->isPlatformUser()
-                ? $user->activeOrganizations()->get()
+                ? $user->reachableOrganizations()
+                    ->orderBy('organizations.name')
+                    ->limit(self::SWITCHER_LIMIT)
+                    ->get()
                     ->map(fn (Organization $organization): array => $this->serialiseOrganization($organization))
                     ->all()
                 : [],

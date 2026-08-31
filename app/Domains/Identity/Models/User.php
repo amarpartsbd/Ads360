@@ -14,6 +14,7 @@ use App\Domains\Tenant\Models\Tenant;
 use App\Support\Concerns\HasPublicId;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -45,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
+
     use HasPublicId;
     use Notifiable;
     use SoftDeletes;
@@ -77,6 +79,9 @@ class User extends Authenticatable implements MustVerifyEmail
     private ?Collection $permissionCache = null;
 
     private ?int $permissionCacheOrganizationId = null;
+
+    /** Memoised for the request: agency reach is asked once per policy call. */
+    private ?bool $tenantWideGrants = null;
 
     /**
      * @return array<string, string>
@@ -237,6 +242,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $this->permissionCache = null;
         $this->permissionCacheOrganizationId = null;
+        $this->tenantWideGrants = null;
         $this->unsetRelation('roles');
     }
 
@@ -259,6 +265,80 @@ class User extends Authenticatable implements MustVerifyEmail
     public function belongsToOrganization(Organization $organization): bool
     {
         return $this->membershipIn($organization) !== null;
+    }
+
+    /**
+     * Whether this user's authority covers every organization of their tenant
+     * (spec §42).
+     *
+     * True for an agency owner or agency admin: their role is granted at
+     * TENANT scope, which means "this agency", not "this one client". It is
+     * false for a client owner, whose role is granted at ORGANIZATION scope
+     * however senior it sounds, and false for platform staff, who are unscoped
+     * and reach clients through the admin surface instead.
+     *
+     * The grant is checked against *this user's own* tenant. A tenant-wide
+     * grant carrying another tenant's id — which nothing should ever write —
+     * still buys nothing here.
+     */
+    public function actsAcrossTenant(): bool
+    {
+        if ($this->tenant_id === null || $this->isPlatformUser()) {
+            return false;
+        }
+
+        return $this->tenantWideGrants ??= $this->roles()
+            ->where('roles.scope', RoleScope::Tenant->value)
+            ->wherePivotNull('organization_id')
+            ->wherePivot('tenant_id', $this->tenant_id)
+            ->exists();
+    }
+
+    /**
+     * Whether this user may act inside an organization at all.
+     *
+     * Two ways in, and the tenant check gates both:
+     *
+     *   1. an active membership in that specific organization — every client
+     *      user, and agency staff assigned to one client;
+     *   2. a tenant-wide grant — an agency owner, for whom a membership row
+     *      per client would mean revocation had to find them all.
+     *
+     * This is *reach*, not permission. Holding it means a permission check is
+     * worth making; it never grants one on its own.
+     */
+    public function canReachOrganization(Organization $organization): bool
+    {
+        if ($this->tenant_id === null || $this->tenant_id !== $organization->tenant_id) {
+            return false;
+        }
+
+        return $this->belongsToOrganization($organization) || $this->actsAcrossTenant();
+    }
+
+    /**
+     * Every organization this user may act inside.
+     *
+     * Deliberately a query rather than a collection: an agency with hundreds
+     * of clients should paginate rather than load them all to render a picker.
+     *
+     * @return Builder<Organization>
+     */
+    public function reachableOrganizations(): Builder
+    {
+        if ($this->actsAcrossTenant()) {
+            return Organization::query()->where('tenant_id', $this->tenant_id);
+        }
+
+        /*
+         * The membership path returns the same model, so a caller can treat
+         * both the same way — but it goes through the pivot, which is what
+         * excludes an invited, suspended or revoked membership.
+         */
+        return Organization::query()->whereIn(
+            'organizations.id',
+            $this->activeOrganizations()->select('organizations.id'),
+        );
     }
 
     /** True when the user holds any role at PLATFORM scope. */

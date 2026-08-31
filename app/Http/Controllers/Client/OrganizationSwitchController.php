@@ -15,8 +15,9 @@ use Illuminate\Validation\ValidationException;
  * Switches which organization the user is working in.
  *
  * The submitted identifier is a claim, not context: it is looked up strictly
- * within the user's own active memberships, so naming another tenant's
- * organization finds nothing (spec §5).
+ * within the organizations this user can reach — their own memberships, or the
+ * clients of their own agency (spec §5, §42) — so naming another tenant's
+ * organization finds nothing.
  */
 final class OrganizationSwitchController
 {
@@ -30,7 +31,7 @@ final class OrganizationSwitchController
         $user = $request->user();
 
         /** @var Organization|null $organization */
-        $organization = $user->activeOrganizations()
+        $organization = $user->reachableOrganizations()
             ->where('organizations.public_id', $validated['organization'])
             ->first();
 

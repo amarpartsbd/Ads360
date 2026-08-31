@@ -63,6 +63,6 @@ final class VerificationDocumentPolicy
             && $user->tenant_id === $document->tenant_id
             && $organization !== null
             && $organization->getKey() === $document->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

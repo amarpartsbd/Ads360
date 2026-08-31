@@ -27,10 +27,21 @@ export interface TenantBranding {
     support_email: string;
 }
 
+/** A Money value object as the server serialises it (spec §59). */
+export interface SerialisedMoney {
+    /** Integer minor units. Never used for display — `formatted` is. */
+    amount: number;
+    currency: string;
+    decimal: string;
+    formatted: string;
+}
+
 export interface Tenant {
     id: string;
     name: string;
     type: string;
+    /** True for an agency or reseller with the module enabled (spec §42). */
+    managesClients: boolean;
     branding: TenantBranding;
 }
 

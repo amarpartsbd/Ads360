@@ -81,6 +81,6 @@ final class VerificationProfilePolicy
             && $user->tenant_id === $profile->tenant_id
             && $organization !== null
             && $organization->getKey() === $profile->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }

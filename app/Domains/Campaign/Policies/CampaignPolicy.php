@@ -144,6 +144,6 @@ final class CampaignPolicy
             && $user->tenant_id === $campaign->tenant_id
             && $organization !== null
             && $organization->getKey() === $campaign->organization_id
-            && $user->belongsToOrganization($organization);
+            && $user->canReachOrganization($organization);
     }
 }
